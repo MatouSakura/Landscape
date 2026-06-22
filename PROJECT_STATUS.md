@@ -50,6 +50,42 @@ Primary reasons:
   `docs/superpowers/specs/2026-06-22-forward-renderer-architecture-design.md`
 - The planned path is to bring up `LandscapeEditor` with a minimal `ForwardDebugPipeline`, then expand toward a normal `ForwardRenderer` with render queues, frame resources, PSO cache, terrain pass entry points, debug UI, and later Diligent `RenderStateCache` integration.
 
+### Framework Build / Runtime Validation
+
+Validation completed on 2026-06-22 with Visual Studio Community 2026 and its bundled CMake.
+
+Working configure command:
+
+```powershell
+cd E:\Landscape
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64-vs18 -G "Visual Studio 18 2026" -A x64 -DPython3_EXECUTABLE="C:\Users\liuyuan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+```
+
+Working build command:
+
+```powershell
+cd E:\Landscape
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64-vs18 --config Release --target Tutorial01_HelloTriangle --parallel
+```
+
+Result:
+
+- `Tutorial01_HelloTriangle` built successfully in Release.
+- CMake detected `D3D11_SUPPORTED: TRUE`, `D3D12_SUPPORTED: TRUE`, `GL_SUPPORTED: TRUE`, and `VULKAN_SUPPORTED: TRUE`.
+- D3D11, D3D12, Vulkan, and OpenGL smoke runs all rendered a triangle and captured a PNG.
+- D3D12 runtime log used adapter `AMD Radeon RX 7900 XT`.
+- Smoke captures:
+  - `build\Win64-vs18\smoke-d3d11\hello_d3d11.png`
+  - `build\Win64-vs18\smoke-d3d12\hello_d3d12.png`
+  - `build\Win64-vs18\smoke-vk\hello_vk.png`
+  - `build\Win64-vs18\smoke-gl\hello_gl.png`
+
+Environment note:
+
+- Visual Studio 2022 BuildTools CMake could configure only after passing the bundled Python executable, but the build failed because that VS2022 BuildTools install is missing ATL (`atlbase.h`).
+- The VS2022 configure also reported D3D11/D3D12 unavailable for the same ATL reason.
+- The VS 18 Community toolchain has ATL installed and is the current working build path.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -109,10 +145,11 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 ### Phase 0: Validate Framework
 
-- Build Diligent Engine locally.
-- Run at least one Diligent sample with Vulkan.
-- Run at least one Diligent sample with D3D12.
-- Confirm AMD RX 7900 XT behaves correctly on both backends.
+- Done: Build Diligent Engine locally with VS 18 Community.
+- Done: Run `Tutorial01_HelloTriangle` with Vulkan.
+- Done: Run `Tutorial01_HelloTriangle` with D3D12.
+- Done: Confirm AMD RX 7900 XT behaves correctly on D3D12.
+- Done: Also smoke-tested D3D11 and OpenGL.
 
 ### Phase 1: Create Landscape Prototype App
 
@@ -176,12 +213,13 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | ID | Status | Severity | Area | Description | Next Action |
 | --- | --- | --- | --- | --- | --- |
 | BUG-001 | Open | High | Runtime support | RTXNS cannot run core samples on AMD because AMD lacks `VK_NV_cooperative_vector`. | Do not use RTXNS as the runtime base. Keep it as reference only. |
-| BUG-002 | Open | Medium | Validation | Diligent Engine has been cloned and pushed, but has not yet been built in `E:\Landscape`. | Configure and build Diligent with VS2022 CMake. |
-| BUG-003 | Open | Medium | Validation | No Diligent sample has been run yet on AMD RX 7900 XT. | Run Vulkan and D3D12 samples after build. |
+| BUG-002 | Closed | Medium | Validation | Diligent Engine has been built in `E:\Landscape` using VS 18 Community CMake. | Reopen only if future full builds fail. |
+| BUG-003 | Closed | Medium | Validation | Diligent sample runtime was verified on AMD RX 7900 XT through D3D11, D3D12, Vulkan, and OpenGL smoke captures. | Reopen only if `LandscapeEditor` fails on these backends. |
 | BUG-004 | Open | Medium | Architecture | The final location for custom Landscape code is not decided yet: inside Diligent samples, separate app folder, or separate repository using Diligent as dependency. | Decide before adding prototype code. |
 | BUG-005 | Open | Low | Git tooling | GitHub CLI is not installed. GitHub auth currently uses Git Credential Manager over HTTPS. | Optional: install GitHub CLI later if repository automation becomes frequent. |
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
+| BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
 
 ## Architecture Decisions
 
@@ -281,27 +319,31 @@ git merge upstream/master
 git push
 ```
 
-### Build With Visual Studio 2022 CMake
+### Build With Visual Studio 18 CMake
 
 ```powershell
 cd E:\Landscape
-& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64 -G "Visual Studio 17 2022" -A x64
-& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64 --config Release --parallel
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64-vs18 -G "Visual Studio 18 2026" -A x64 -DPython3_EXECUTABLE="C:\Users\liuyuan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64-vs18 --config Release --target Tutorial01_HelloTriangle --parallel
+```
+
+### Smoke Run Backends
+
+```powershell
+cd E:\Landscape\build\Win64-vs18\DiligentSamples\Tutorials\Tutorial01_HelloTriangle\Release
+.\Tutorial01_HelloTriangle.exe --mode d3d12 --adapters_dialog 0 --golden_image_mode capture --capture_path E:\Landscape\build\Win64-vs18\smoke-d3d12 --capture_name hello_d3d12 --capture_format png --capture_alpha 0 --show_ui 0 -w 640 -h 480
 ```
 
 ## Next Immediate Steps
 
-1. Build Diligent Engine in `E:\Landscape`.
-2. Run a Vulkan sample.
-3. Run a D3D12 sample.
-4. Decide where `LandscapeEditor` should live.
-5. Review and approve the full Forward Renderer architecture spec.
-6. Define the initial implementation plan for `LandscapeEditor` and `ForwardDebugPipeline`.
-7. Add the first prototype app.
-8. Render a procedural triangle through `ForwardDebugPipeline`.
-9. Replace the triangle with a flat grid.
-10. Replace the flat grid with a heightmap terrain patch.
-11. Add quadtree LOD selection.
+1. Decide where `LandscapeEditor` should live.
+2. Review and approve the full Forward Renderer architecture spec.
+3. Define the initial implementation plan for `LandscapeEditor` and `ForwardDebugPipeline`.
+4. Add the first prototype app.
+5. Render a procedural triangle through `ForwardDebugPipeline`.
+6. Replace the triangle with a flat grid.
+7. Replace the flat grid with a heightmap terrain patch.
+8. Add quadtree LOD selection.
 
 ## Notes
 
