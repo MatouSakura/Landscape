@@ -48,7 +48,7 @@ Primary reasons:
   `docs/superpowers/specs/2026-06-22-forward-debug-pipeline-design.md`
 - Added the broader forward renderer architecture design:
   `docs/superpowers/specs/2026-06-22-forward-renderer-architecture-design.md`
-- The planned path is to bring up `LandscapePrototype` with a minimal `ForwardDebugPipeline`, then expand toward a normal `ForwardRenderer` with render queues, frame resources, PSO cache, terrain pass entry points, debug UI, and later Diligent `RenderStateCache` integration.
+- The planned path is to bring up `LandscapeEditor` with a minimal `ForwardDebugPipeline`, then expand toward a normal `ForwardRenderer` with render queues, frame resources, PSO cache, terrain pass entry points, debug UI, and later Diligent `RenderStateCache` integration.
 
 ### Hardware / RTXNS Finding
 
@@ -116,7 +116,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 ### Phase 1: Create Landscape Prototype App
 
-- Add a new sample or app named `LandscapePrototype`.
+- Add a new sample or app named `LandscapeEditor`.
 - Keep it separate from upstream Diligent samples where possible.
 - Open a window and render a basic grid.
 - Add camera movement and a debug UI.
@@ -294,9 +294,9 @@ cd E:\Landscape
 1. Build Diligent Engine in `E:\Landscape`.
 2. Run a Vulkan sample.
 3. Run a D3D12 sample.
-4. Decide where `LandscapePrototype` should live.
+4. Decide where `LandscapeEditor` should live.
 5. Review and approve the full Forward Renderer architecture spec.
-6. Define the initial implementation plan for `LandscapePrototype` and `ForwardDebugPipeline`.
+6. Define the initial implementation plan for `LandscapeEditor` and `ForwardDebugPipeline`.
 7. Add the first prototype app.
 8. Render a procedural triangle through `ForwardDebugPipeline`.
 9. Replace the triangle with a flat grid.

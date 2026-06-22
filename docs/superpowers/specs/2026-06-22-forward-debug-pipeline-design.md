@@ -6,7 +6,7 @@ Date: 2026-06-22
 
 Create the first Landscape-specific rendering slice on top of Diligent Engine.
 
-This slice should add a standalone `LandscapePrototype` sample and a minimal `ForwardDebugPipeline` that can clear the frame, bind a graphics PSO, and draw simple debug geometry. It is the bring-up path for later terrain work, not the final renderer.
+This slice should add a standalone `LandscapeEditor` sample and a minimal `ForwardDebugPipeline` that can clear the frame, bind a graphics PSO, and draw simple debug geometry. It is the bring-up path for later terrain work, not the final renderer.
 
 ## Non-Goals
 
@@ -21,12 +21,12 @@ This slice should add a standalone `LandscapePrototype` sample and a minimal `Fo
 Use the Diligent sample structure:
 
 ```text
-DiligentSamples/Samples/LandscapePrototype
+DiligentSamples/Samples/LandscapeEditor
   CMakeLists.txt
   readme.md
   src/
-    LandscapePrototype.hpp
-    LandscapePrototype.cpp
+    LandscapeEditor.hpp
+    LandscapeEditor.cpp
     ForwardDebugPipeline.hpp
     ForwardDebugPipeline.cpp
 ```
@@ -41,9 +41,9 @@ This keeps the first prototype close to existing sample infrastructure and reuse
 
 ## Architecture
 
-### LandscapePrototype
+### LandscapeEditor
 
-`LandscapePrototype` owns the sample lifecycle.
+`LandscapeEditor` owns the sample lifecycle.
 
 Responsibilities:
 
@@ -82,7 +82,7 @@ Design constraints:
 Initial frame flow:
 
 ```text
-LandscapePrototype::Render()
+LandscapeEditor::Render()
   Clear back buffer
   Clear depth buffer
   ForwardDebugPipeline::Render()
@@ -93,7 +93,7 @@ LandscapePrototype::Render()
 Future terrain flow:
 
 ```text
-LandscapePrototype::Render()
+LandscapeEditor::Render()
   Clear frame
   ForwardDebugPipeline::RenderTerrainDebug()
   ForwardDebugPipeline::RenderQuadtreeOverlay()
@@ -111,7 +111,7 @@ LandscapePrototype::Render()
 Minimum verification:
 
 1. Configure the project with Visual Studio 2022 CMake.
-2. Build the `LandscapePrototype` target in `Release`.
+2. Build the `LandscapeEditor` target in `Release`.
 3. Confirm the target exists in the generated solution.
 4. Run the sample with at least one backend available on the machine.
 
@@ -126,7 +126,7 @@ If runtime verification is not possible in the current turn, record that as an o
 
 The first implementation should:
 
-1. Add `LandscapePrototype` sample files.
+1. Add `LandscapeEditor` sample files.
 2. Add `ForwardDebugPipeline` files.
 3. Register the sample in CMake.
 4. Build only the new target or the whole solution if needed.

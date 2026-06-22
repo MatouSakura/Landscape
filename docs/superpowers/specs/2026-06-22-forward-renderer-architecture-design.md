@@ -27,7 +27,7 @@ This design does not implement deferred rendering. It only reserves boundaries s
 Use a layered renderer:
 
 ```text
-LandscapePrototype / App
+LandscapeEditor / App
   Scene and camera setup
   Runtime UI and settings
   Calls renderer per frame
@@ -393,7 +393,7 @@ These metrics are useful before adding GPU culling.
 
 The first milestone remains the smaller forward debug slice:
 
-1. Add `LandscapePrototype`.
+1. Add `LandscapeEditor`.
 2. Add `ForwardDebugPipeline`.
 3. Draw a procedural triangle.
 4. Build the target.
@@ -429,12 +429,12 @@ Build verification:
 ```powershell
 cd E:\Landscape
 & "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64 -G "Visual Studio 17 2022" -A x64
-& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64 --config Release --target LandscapePrototype --parallel
+& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64 --config Release --target LandscapeEditor --parallel
 ```
 
 Runtime verification:
 
-- Launch `LandscapePrototype`.
+- Launch `LandscapeEditor`.
 - Confirm the window clears to the expected color.
 - Confirm the procedural geometry renders.
 - Confirm no PSO creation occurs during the draw loop after initialization.
@@ -448,7 +448,7 @@ Preferred backend order:
 
 ## Open Questions
 
-- Whether `LandscapePrototype` should remain inside the DiligentSamples submodule or move into a top-level project folder after the first prototype.
+- Whether `LandscapeEditor` should remain inside the DiligentSamples submodule or move into a top-level project folder after the first prototype.
 - Whether project `PSOCache` should use custom keys only or directly wrap Diligent `RenderStateCache` from the start.
 - Whether the first terrain grid should use CPU-generated vertices or a procedural vertex shader.
 
