@@ -4,7 +4,7 @@
 
 **Goal:** Add the first runnable `LandscapeEditor` sample with a minimal `ForwardDebugPipeline` that renders a procedural triangle through Diligent Engine.
 
-**Architecture:** `LandscapeEditor` will live under `DiligentSamples/Samples/LandscapeEditor` and use Diligent's existing `add_sample_app()` integration. The editor sample owns application lifecycle through `SampleBase`, while `ForwardDebugPipeline` owns the first graphics PSO and draw call. This keeps the first app small and gives later terrain code a clear rendering entry point.
+**Architecture:** `LandscapeEditor` will live in the root-owned `LandscapeEditor/` directory and use Diligent's existing `add_sample_app()` integration after `DiligentSamples` has been added. The editor sample owns application lifecycle through `SampleBase`, while `ForwardDebugPipeline` owns the first graphics PSO and draw call. This keeps custom project code out of Diligent submodules and gives later terrain code a clear rendering entry point.
 
 **Tech Stack:** C++20, CMake, Diligent Engine SampleBase, HLSL shaders embedded as source strings for the first smoke target.
 
@@ -12,21 +12,21 @@
 
 ## File Structure
 
-- Modify: `DiligentSamples/Samples/CMakeLists.txt`
-  - Register `LandscapeEditor` with `add_subdirectory(LandscapeEditor)`.
-- Create: `DiligentSamples/Samples/LandscapeEditor/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
+  - Register `LandscapeEditor` after `DiligentSamples` with `add_subdirectory(LandscapeEditor)`.
+- Create: `LandscapeEditor/CMakeLists.txt`
   - Define the `LandscapeEditor` target through `add_sample_app()`.
-- Create: `DiligentSamples/Samples/LandscapeEditor/readme.md`
+- Create: `LandscapeEditor/readme.md`
   - Explain the first editor milestone and smoke commands.
-- Create: `DiligentSamples/Samples/LandscapeEditor/assets/.gitignore`
+- Create: `LandscapeEditor/assets/.gitignore`
   - Keep the assets directory present because `add_sample_app()` copies it after build.
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/ForwardDebugPipeline.hpp`
+- Create: `LandscapeEditor/src/ForwardDebugPipeline.hpp`
   - Declare the small render pipeline wrapper.
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/ForwardDebugPipeline.cpp`
+- Create: `LandscapeEditor/src/ForwardDebugPipeline.cpp`
   - Build the triangle PSO and issue the draw call.
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/LandscapeEditor.hpp`
+- Create: `LandscapeEditor/src/LandscapeEditor.hpp`
   - Declare the sample class.
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/LandscapeEditor.cpp`
+- Create: `LandscapeEditor/src/LandscapeEditor.cpp`
   - Wire SampleBase initialization, clear, render, and UI update.
 - Modify: `PROJECT_STATUS.md`
   - Record the new target and validation result after implementation.
@@ -34,10 +34,10 @@
 ## Task 1: Register The Sample Shell
 
 **Files:**
-- Modify: `DiligentSamples/Samples/CMakeLists.txt`
-- Create: `DiligentSamples/Samples/LandscapeEditor/CMakeLists.txt`
-- Create: `DiligentSamples/Samples/LandscapeEditor/readme.md`
-- Create: `DiligentSamples/Samples/LandscapeEditor/assets/.gitignore`
+- Modify: `CMakeLists.txt`
+- Create: `LandscapeEditor/CMakeLists.txt`
+- Create: `LandscapeEditor/readme.md`
+- Create: `LandscapeEditor/assets/.gitignore`
 
 - [ ] **Step 1: Verify the target is absent**
 
@@ -52,7 +52,7 @@ Expected: MSBuild reports that target `LandscapeEditor` does not exist.
 
 - [ ] **Step 2: Register `LandscapeEditor`**
 
-Add this line to `DiligentSamples/Samples/CMakeLists.txt` near the other always-built samples:
+Add this line in the root `CMakeLists.txt` immediately after `add_subdirectory(DiligentSamples)`:
 
 ```cmake
 add_subdirectory(LandscapeEditor)
@@ -60,7 +60,7 @@ add_subdirectory(LandscapeEditor)
 
 - [ ] **Step 3: Add the sample target CMake file**
 
-Create `DiligentSamples/Samples/LandscapeEditor/CMakeLists.txt`:
+Create `LandscapeEditor/CMakeLists.txt`:
 
 ```cmake
 cmake_minimum_required (VERSION 3.10)
@@ -78,7 +78,7 @@ set(INCLUDE
 )
 
 add_sample_app(LandscapeEditor
-    IDE_FOLDER DiligentSamples/Samples
+    IDE_FOLDER Landscape
     SOURCES ${SOURCE}
     INCLUDES ${INCLUDE}
 )
@@ -91,8 +91,8 @@ Create `readme.md` with the current milestone and smoke commands. Create `assets
 ## Task 2: Add ForwardDebugPipeline
 
 **Files:**
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/ForwardDebugPipeline.hpp`
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/ForwardDebugPipeline.cpp`
+- Create: `LandscapeEditor/src/ForwardDebugPipeline.hpp`
+- Create: `LandscapeEditor/src/ForwardDebugPipeline.cpp`
 
 - [ ] **Step 1: Declare the pipeline wrapper**
 
@@ -129,8 +129,8 @@ pContext->Draw(DrawAttrs);
 ## Task 3: Add LandscapeEditor App
 
 **Files:**
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/LandscapeEditor.hpp`
-- Create: `DiligentSamples/Samples/LandscapeEditor/src/LandscapeEditor.cpp`
+- Create: `LandscapeEditor/src/LandscapeEditor.hpp`
+- Create: `LandscapeEditor/src/LandscapeEditor.cpp`
 
 - [ ] **Step 1: Declare the sample**
 
@@ -173,14 +173,14 @@ cd E:\Landscape
 & "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64-vs18 --config Release --target LandscapeEditor --parallel
 ```
 
-Expected: `LandscapeEditor.exe` is produced under `build\Win64-vs18\DiligentSamples\Samples\LandscapeEditor\Release`.
+Expected: `LandscapeEditor.exe` is produced under `build\Win64-vs18\LandscapeEditor\Release`.
 
 - [ ] **Step 3: Smoke run D3D12**
 
 Run:
 
 ```powershell
-cd E:\Landscape\build\Win64-vs18\DiligentSamples\Samples\LandscapeEditor\Release
+cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 .\LandscapeEditor.exe --mode d3d12 --adapters_dialog 0 --golden_image_mode capture --capture_path E:\Landscape\build\Win64-vs18\smoke-landscape-editor-d3d12 --capture_name landscape_editor_d3d12 --capture_format png --capture_alpha 0 --show_ui 0 -w 640 -h 480
 ```
 
@@ -197,7 +197,7 @@ Expected: exit code `0`, one PNG capture, and a visible triangle.
 Update `PROJECT_STATUS.md` with build and smoke results, then commit and push.
 
 ```powershell
-git add DiligentSamples/Samples/CMakeLists.txt DiligentSamples/Samples/LandscapeEditor PROJECT_STATUS.md
+git add CMakeLists.txt LandscapeEditor PROJECT_STATUS.md
 git commit -m "Add LandscapeEditor forward debug sample"
 git push origin master
 ```
@@ -207,4 +207,4 @@ git push origin master
 - Spec coverage: this plan implements the first `LandscapeEditor` target and the first `ForwardDebugPipeline` milestone from the forward renderer design.
 - Scope: terrain grids, camera controls, PSO cache, and quadtree LOD are intentionally deferred until the executable target is stable.
 - Validation: the plan includes CMake reconfigure, target build, and D3D12/Vulkan smoke captures.
-- Ambiguity: `LandscapeEditor` is placed inside `DiligentSamples/Samples` for the first milestone; later migration to a separate top-level app remains a separate architecture decision.
+- Ambiguity: `LandscapeEditor` is placed in the root-owned `LandscapeEditor/` directory for the first milestone so project code is not hidden inside a submodule.

@@ -88,6 +88,28 @@ Environment note:
 - The VS2022 configure also reported D3D11/D3D12 unavailable for the same ATL reason.
 - The VS 18 Community toolchain has ATL installed and is the current working build path.
 
+### LandscapeEditor Bring-Up
+
+`LandscapeEditor` has been added under the root-owned `LandscapeEditor/` directory.
+
+Current implementation:
+
+- Registers a `LandscapeEditor` Diligent sample target.
+- Opens through the existing Diligent `SampleBase` application path.
+- Adds `ForwardDebugPipeline` as the first rendering boundary.
+- Renders a procedural HLSL triangle through `ForwardDebugPipeline`.
+- Keeps terrain grids, heightmaps, camera controls, debug UI, and PSO cache integration deferred until the target is stable.
+
+Validation completed on 2026-06-22:
+
+- Configure: Visual Studio 18 CMake, `build\Win64-vs18`.
+- Build: `LandscapeEditor` Release target succeeded.
+- Smoke runs succeeded on:
+  - D3D12: `build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-landscape-editor-vk\landscape_editor_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-landscape-editor-d3d11\landscape_editor_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-landscape-editor-gl\landscape_editor_gl.png`
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -155,10 +177,11 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 ### Phase 1: Create Landscape Prototype App
 
-- Add a new sample or app named `LandscapeEditor`.
+- Done: Add a new sample or app named `LandscapeEditor`.
 - Keep it separate from upstream Diligent samples where possible.
-- Open a window and render a basic grid.
-- Add camera movement and a debug UI.
+- Done: Open a window and render a procedural triangle through `ForwardDebugPipeline`.
+- Next: Render a basic grid.
+- Next: Add camera movement and a debug UI.
 
 ### Phase 2: Basic Heightmap Terrain
 
@@ -217,7 +240,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-001 | Open | High | Runtime support | RTXNS cannot run core samples on AMD because AMD lacks `VK_NV_cooperative_vector`. | Do not use RTXNS as the runtime base. Keep it as reference only. |
 | BUG-002 | Closed | Medium | Validation | Diligent Engine has been built in `E:\Landscape` using VS 18 Community CMake. | Reopen only if future full builds fail. |
 | BUG-003 | Closed | Medium | Validation | Diligent sample runtime was verified on AMD RX 7900 XT through D3D11, D3D12, Vulkan, and OpenGL smoke captures. | Reopen only if `LandscapeEditor` fails on these backends. |
-| BUG-004 | Open | Medium | Architecture | The final location for custom Landscape code is not decided yet: inside Diligent samples, separate app folder, or separate repository using Diligent as dependency. | Decide before adding prototype code. |
+| BUG-004 | Closed | Medium | Architecture | The first milestone location is decided: root-owned `LandscapeEditor/`, not a Diligent submodule. | Reopen only if the project is moved to a separate repository. |
 | BUG-005 | Open | Low | Git tooling | GitHub CLI is not installed. GitHub auth currently uses Git Credential Manager over HTTPS. | Optional: install GitHub CLI later if repository automation becomes frequent. |
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
@@ -297,6 +320,17 @@ The cache key should include at least:
 
 Switching between forward debug and deferred rendering should select a different active pipeline and retrieve PSOs from the cache. It should not compile shaders or create PSOs during normal frame rendering.
 
+### Decision 006: Keep Landscape Code Out of Submodules
+
+Custom Landscape project code should live in root-owned project folders such as `LandscapeEditor/`.
+
+Reasoning:
+
+- `DiligentSamples` is a Git submodule.
+- New files inside a submodule are not committed as normal files in the root `MatouSakura/Landscape` repository.
+- Keeping project code outside submodules makes clone, push, review, and future migration simpler.
+- Root `CMakeLists.txt` can add `LandscapeEditor` after `DiligentSamples`, reusing `add_sample_app()` without modifying the submodule.
+
 ## Useful Commands
 
 ### Clone With Submodules
@@ -336,16 +370,29 @@ cd E:\Landscape\build\Win64-vs18\DiligentSamples\Tutorials\Tutorial01_HelloTrian
 .\Tutorial01_HelloTriangle.exe --mode d3d12 --adapters_dialog 0 --golden_image_mode capture --capture_path E:\Landscape\build\Win64-vs18\smoke-d3d12 --capture_name hello_d3d12 --capture_format png --capture_alpha 0 --show_ui 0 -w 640 -h 480
 ```
 
+### Build LandscapeEditor
+
+```powershell
+cd E:\Landscape
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64-vs18 -G "Visual Studio 18 2026" -A x64 -DPython3_EXECUTABLE="C:\Users\liuyuan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64-vs18 --config Release --target LandscapeEditor --parallel
+```
+
+### Smoke Run LandscapeEditor
+
+```powershell
+cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
+.\LandscapeEditor.exe --mode d3d12 --adapters_dialog 0 --golden_image_mode capture --capture_path E:\Landscape\build\Win64-vs18\smoke-landscape-editor-d3d12 --capture_name landscape_editor_d3d12 --capture_format png --capture_alpha 0 --show_ui 0 -w 640 -h 480
+```
+
 ## Next Immediate Steps
 
-1. Decide where `LandscapeEditor` should live.
-2. Review and approve the full Forward Renderer architecture spec.
-3. Define the initial implementation plan for `LandscapeEditor` and `ForwardDebugPipeline`.
-4. Add the first prototype app.
-5. Render a procedural triangle through `ForwardDebugPipeline`.
-6. Replace the triangle with a flat grid.
-7. Replace the flat grid with a heightmap terrain patch.
-8. Add quadtree LOD selection.
+1. Replace the procedural triangle with a flat debug grid.
+2. Add camera movement.
+3. Add a minimal debug UI.
+4. Start defining the terrain patch data model.
+5. Replace the flat grid with a heightmap terrain patch.
+6. Add quadtree LOD selection.
 
 ## Notes
 

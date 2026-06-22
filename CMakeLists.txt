@@ -46,6 +46,7 @@ endif()
 
 if(${DILIGENT_BUILD_SAMPLES})
     add_subdirectory(DiligentSamples)
+    add_subdirectory(LandscapeEditor)
 endif()
 
 if(${DILIGENT_BUILD_DOCS})
