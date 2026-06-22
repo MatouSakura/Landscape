@@ -119,7 +119,12 @@ Current implementation:
 - Renders a CPU-generated flat terrain patch through `ForwardOpaque`.
 - Runs a four-cascade shadow pass before forward opaque rendering.
 - Updates sun light constants and samples the first CSM shadow map in the terrain shader.
-- Keeps heightmaps, full cascade selection/stabilization, terrain materials, sky, transparent, and postprocess deferred until the first forward renderer is complete.
+- Renders a procedural sky pass after opaque terrain using far-depth testing.
+- Submits and renders a transparent alpha-blended test quad through a transparent queue.
+- Renders through a scene-color target and postprocess pass boundary.
+- Uses shader tone mapping/gamma on D3D12, Vulkan, and D3D11.
+- Uses an OpenGL `CopyTexture` fallback for the postprocess boundary because shader sampling of the scene color currently crashes during golden-image capture on this machine.
+- Keeps heightmaps, full cascade selection/stabilization, production terrain materials, and quadtree LOD deferred until the first forward renderer is hardened.
 
 Validation completed on 2026-06-22:
 
@@ -140,6 +145,12 @@ Validation completed on 2026-06-22:
 - Stage-5 D3D12 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage5-d3d12\landscape_editor_stage5_d3d12.png`.
 - Stage-5 Vulkan smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage5-vk\landscape_editor_stage5_vk.png`.
 - Stage-5 pixel check: D3D12 `640x480`, 6 unique colors, 238720 non-background pixels, 984 bright axis pixels, 214050 terrain-like pixels; Vulkan `640x480`, 5 unique colors, 238720 non-background pixels, 984 bright axis pixels, 214050 terrain-like pixels.
+- Stage-6 validation script: `tools\verify_landscape_stage6.py`.
+- Stage-6 D3D12 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage6-d3d12\landscape_editor_stage6_d3d12.png`.
+- Stage-6 Vulkan smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage6-vk\landscape_editor_stage6_vk.png`.
+- Stage-6 D3D11 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage6-d3d11\landscape_editor_stage6_d3d11.png`.
+- Stage-6 OpenGL smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage6-gl\landscape_editor_stage6_gl.png`.
+- Stage-6 pixel check: all four captures are `640x480`, have visible sky/grid/terrain/transparent content, and have non-background coverage of 303360 pixels.
 - D3D12 pixel check passed for the grid center axes: `row_bright=513`, `col_bright=385`.
 - Smoke runs succeeded on:
   - D3D12: `build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png`
@@ -229,7 +240,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Move the debug grid to world space through camera constants.
 - Done: Add a CPU-generated flat terrain patch in `ForwardOpaque`.
 - Done: Add sun light with four-cascade shadow maps.
-- Next: Add procedural sky, transparent queue, tone mapping, and ImGui diagnostics.
+- Done: Add procedural sky, transparent queue, tone mapping, and ImGui diagnostics.
+- Next: Harden docs, PSO stability checks, and final four-backend smoke records.
 
 ### Phase 2: Basic Heightmap Terrain
 
@@ -293,7 +305,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 | BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
-| BUG-009 | Open | Medium | Forward pipeline | Complete forward renderer is not implemented yet; current renderer has camera-driven world-space debug rendering, renderer orchestration, render queue submission, PSO cache warm-up, an opaque terrain patch, sun light constants, and four shadow cascades, but no sky, transparent queue, or postprocess pass. | Execute the remaining complete forward pipeline plan in staged commits. |
+| BUG-009 | Open | Medium | Forward pipeline | The first complete forward pass chain is implemented, but final hardening is still pending: PSO creation-count stability, final docs, and final four-backend smoke records. | Execute the completion hardening slice. |
+| BUG-010 | Open | Medium | OpenGL postprocess | OpenGL crashes during golden-image capture when the postprocess shader samples the offscreen scene color. The current OpenGL path uses `CopyTexture` as a fallback while D3D12, Vulkan, and D3D11 use shader tone mapping/gamma. | Investigate Diligent OpenGL texture state/SRV binding for scene-color sampling after the first forward pipeline is complete. |
 
 ## Architecture Decisions
 
@@ -436,11 +449,11 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add procedural sky rendering.
-2. Add a transparent queue with alpha-blend PSO and distance sorting.
-3. Add a tone mapping/gamma postprocess pass.
-4. Re-run D3D12, Vulkan, D3D11, and OpenGL smoke captures.
-5. Start defining the heightmap terrain data model after the forward pipeline is complete.
+1. Run final validation scripts for stages 2 through 6.
+2. Verify PSO creation count is stable across frames.
+3. Re-run final D3D12, Vulkan, D3D11, and OpenGL smoke captures.
+4. Commit and push the final forward pipeline hardening record.
+5. Start defining the heightmap terrain data model after the forward pipeline is hardened.
 
 ## Notes
 

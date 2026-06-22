@@ -7,9 +7,12 @@ set(SOURCE
     src/ForwardDebugPipeline.cpp
     src/ForwardRenderer.cpp
     src/LandscapeEditor.cpp
+    src/PostProcessRenderer.cpp
     src/PSOCache.cpp
     src/ShadowRenderer.cpp
+    src/SkyRenderer.cpp
     src/TerrainPatchRenderer.cpp
+    src/TransparentRenderer.cpp
 )
 
 set(INCLUDE
@@ -17,11 +20,14 @@ set(INCLUDE
     src/ForwardDebugPipeline.hpp
     src/ForwardRenderer.hpp
     src/LandscapeEditor.hpp
+    src/PostProcessRenderer.hpp
     src/PSOCache.hpp
     src/RenderQueue.hpp
     src/RenderView.hpp
     src/ShadowRenderer.hpp
+    src/SkyRenderer.hpp
     src/TerrainPatchRenderer.hpp
+    src/TransparentRenderer.hpp
 )
 
 add_sample_app(LandscapeEditor

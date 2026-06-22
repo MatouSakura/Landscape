@@ -55,7 +55,11 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Terrain tris: %u", Stats.TerrainTriangleCount);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
+        ImGui::Text("Sky passes: %u", Stats.SkyPassCount);
+        ImGui::Text("Transparent items: %u", Stats.TransparentItemCount);
+        ImGui::Text("Transparent passes: %u", Stats.TransparentPassCount);
         ImGui::Text("Debug items: %u", Stats.DebugItemCount);
+        ImGui::Text("Postprocess passes: %u", Stats.PostProcessPassCount);
         ImGui::Text("PSOs: %zu", Stats.PSOCount);
         ImGui::Text("PSO creations: %zu", Stats.PSOCreationCount);
         ImGui::End();

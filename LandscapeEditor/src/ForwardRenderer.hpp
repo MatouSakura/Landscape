@@ -1,10 +1,13 @@
 #pragma once
 
 #include "ForwardDebugPipeline.hpp"
+#include "PostProcessRenderer.hpp"
 #include "PSOCache.hpp"
 #include "RenderQueue.hpp"
 #include "ShadowRenderer.hpp"
+#include "SkyRenderer.hpp"
 #include "TerrainPatchRenderer.hpp"
+#include "TransparentRenderer.hpp"
 
 namespace Diligent
 {
@@ -21,7 +24,11 @@ struct ForwardRendererStats final
     Uint32 TerrainTriangleCount = 0;
     Uint32 ShadowCascadeCount = 0;
     Uint32 ShadowMapSize      = 0;
+    Uint32 SkyPassCount       = 0;
+    Uint32 TransparentItemCount = 0;
+    Uint32 TransparentPassCount = 0;
     Uint32 DebugItemCount     = 0;
+    Uint32 PostProcessPassCount = 0;
     size_t PSOCount           = 0;
     size_t PSOCreationCount = 0;
 };
@@ -38,6 +45,9 @@ private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;
     TerrainPatchRenderer  m_TerrainPatchRenderer;
     ShadowRenderer        m_ShadowRenderer;
+    SkyRenderer           m_SkyRenderer;
+    TransparentRenderer   m_TransparentRenderer;
+    PostProcessRenderer   m_PostProcessRenderer;
     RenderQueue           m_RenderQueue;
     PSOCache              m_PSOCache;
     ForwardRendererStats  m_Stats;
