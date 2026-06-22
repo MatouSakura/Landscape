@@ -42,6 +42,14 @@ Primary reasons:
 - Allows terrain code to be written above a unified rendering interface.
 - Avoids spending the early project on writing a custom RHI.
 
+### Forward Renderer Planning
+
+- Added the first-slice forward debug pipeline design:
+  `docs/superpowers/specs/2026-06-22-forward-debug-pipeline-design.md`
+- Added the broader forward renderer architecture design:
+  `docs/superpowers/specs/2026-06-22-forward-renderer-architecture-design.md`
+- The planned path is to bring up `LandscapePrototype` with a minimal `ForwardDebugPipeline`, then expand toward a normal `ForwardRenderer` with render queues, frame resources, PSO cache, terrain pass entry points, debug UI, and later Diligent `RenderStateCache` integration.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -287,11 +295,13 @@ cd E:\Landscape
 2. Run a Vulkan sample.
 3. Run a D3D12 sample.
 4. Decide where `LandscapePrototype` should live.
-5. Define the initial pipeline interfaces and PSO cache shape.
-6. Add the first prototype app.
-7. Render a flat grid through `ForwardDebugPipeline`.
-8. Replace the flat grid with a heightmap terrain patch.
-9. Add quadtree LOD selection.
+5. Review and approve the full Forward Renderer architecture spec.
+6. Define the initial implementation plan for `LandscapePrototype` and `ForwardDebugPipeline`.
+7. Add the first prototype app.
+8. Render a procedural triangle through `ForwardDebugPipeline`.
+9. Replace the triangle with a flat grid.
+10. Replace the flat grid with a heightmap terrain patch.
+11. Add quadtree LOD selection.
 
 ## Notes
 
