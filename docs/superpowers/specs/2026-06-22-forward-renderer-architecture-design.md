@@ -389,38 +389,38 @@ Track at least:
 
 These metrics are useful before adding GPU culling.
 
-## First Milestone
+## Current Milestones
 
-The first milestone remains the smaller forward debug slice:
+The first milestones are already complete:
 
-1. Add `LandscapeEditor`.
+1. Add root-owned `LandscapeEditor`.
 2. Add `ForwardDebugPipeline`.
-3. Draw a procedural triangle.
-4. Build the target.
-5. Run with one backend.
+3. Draw procedural debug geometry.
+4. Replace the triangle with a flat debug grid.
+5. Build and smoke-test D3D12, Vulkan, D3D11, and OpenGL.
 
-This validates app integration and PSO creation.
+This validates app integration, PSO creation, and AMD-compatible backend execution.
 
-## Second Milestone
+## Next Milestone
 
-After the first milestone renders:
+The next milestone is the first complete forward renderer core:
 
 1. Add `ForwardRenderer` skeleton.
 2. Add `RenderView`.
 3. Add `FrameResources`.
 4. Add a small in-memory `PSOCache`.
-5. Move the triangle draw through a simple `RenderQueue`.
+5. Move debug grid draw submission through a simple `RenderQueue`.
 6. Add debug UI for renderer mode and metrics.
 
-## Third Milestone
+## Full Forward Pipeline Milestone
 
-After the renderer skeleton is stable:
+After the renderer core is stable:
 
-1. Replace triangle with a flat grid.
-2. Add camera constants.
-3. Add world/view/projection transform.
-4. Add wireframe mode.
-5. Add terrain patch abstraction.
+1. Add camera constants and world/view/projection transforms.
+2. Add a flat terrain patch abstraction.
+3. Add forward opaque terrain drawing.
+4. Add directional sun light and four-cascade shadow maps.
+5. Add procedural sky, transparent queue, simple tone mapping, and ImGui debug controls.
 
 ## Verification
 
@@ -428,8 +428,8 @@ Build verification:
 
 ```powershell
 cd E:\Landscape
-& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64 -G "Visual Studio 17 2022" -A x64
-& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64 --config Release --target LandscapeEditor --parallel
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -S . -B build\Win64-vs18 -G "Visual Studio 18 2026" -A x64 -DPython3_EXECUTABLE="C:\Users\liuyuan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+& "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" --build build\Win64-vs18 --config Release --target LandscapeEditor --parallel
 ```
 
 Runtime verification:
@@ -446,10 +446,9 @@ Preferred backend order:
 2. D3D12.
 3. D3D11 fallback if needed.
 
-## Open Questions
+## Resolved Direction
 
-- Whether `LandscapeEditor` should remain inside the DiligentSamples submodule or move into a top-level project folder after the first prototype.
-- Whether project `PSOCache` should use custom keys only or directly wrap Diligent `RenderStateCache` from the start.
-- Whether the first terrain grid should use CPU-generated vertices or a procedural vertex shader.
-
-These questions do not block the first milestone.
+- `LandscapeEditor` stays in the root-owned `LandscapeEditor/` directory.
+- The first project `PSOCache` uses custom deterministic keys and in-memory Diligent PSO references.
+- Diligent `RenderStateCache` integration remains a later optimization after the forward pipeline is stable.
+- The first terrain surface uses CPU-generated vertex and index buffers so the same geometry can feed forward, shadow, debug, and later quadtree passes.

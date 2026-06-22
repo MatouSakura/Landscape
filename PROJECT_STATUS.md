@@ -16,7 +16,7 @@ The first target is a standalone terrain prototype based on Diligent Engine. The
 - GitHub repository: `https://github.com/MatouSakura/Landscape`
 - Base framework: Diligent Engine
 - Current branch: `master`
-- Current base commit: `768ad6c`
+- Current base commit: `23e4db5`
 - `origin`: `https://github.com/MatouSakura/Landscape.git`
 - `upstream`: `https://github.com/DiligentGraphics/DiligentEngine.git`
 
@@ -52,7 +52,9 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-22-landscape-editor-forward-debug.md`
 - Added the implementation plan for the first flat debug grid:
   `docs/superpowers/plans/2026-06-22-forward-debug-grid.md`
-- The planned path is to bring up `LandscapeEditor` with a minimal `ForwardDebugPipeline`, then expand toward a normal `ForwardRenderer` with render queues, frame resources, PSO cache, terrain pass entry points, debug UI, and later Diligent `RenderStateCache` integration.
+- Added the complete forward pipeline implementation plan:
+  `docs/superpowers/plans/2026-06-22-forward-pipeline-completion.md`
+- The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
 
@@ -184,7 +186,15 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Keep it separate from upstream Diligent samples where possible.
 - Done: Open a window and render through `ForwardDebugPipeline`.
 - Done: Replace the triangle with a flat debug grid.
-- Next: Add camera movement and a debug UI.
+- Next: Add camera movement, `RenderView`, `FrameResources`, and a debug UI.
+
+### Phase 1.5: Complete Forward Pipeline
+
+- Planned: Add `ForwardRenderer`, `RenderQueue`, and project `PSOCache`.
+- Planned: Move the debug grid to world space through camera constants.
+- Planned: Add a CPU-generated flat terrain patch in `ForwardOpaque`.
+- Planned: Add sun light with four-cascade shadow maps.
+- Planned: Add procedural sky, transparent queue, tone mapping, and ImGui diagnostics.
 
 ### Phase 2: Basic Heightmap Terrain
 
@@ -248,6 +258,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 | BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
+| BUG-009 | Open | Medium | Forward pipeline | Complete forward renderer is not implemented yet; current renderer is still the flat debug grid slice. | Execute the complete forward pipeline plan in staged commits. |
 
 ## Architecture Decisions
 

@@ -18,10 +18,10 @@ This slice should add a standalone `LandscapeEditor` sample and a minimal `Forwa
 
 ## Location
 
-Use the Diligent sample structure:
+Use the root-owned Landscape project structure:
 
 ```text
-DiligentSamples/Samples/LandscapeEditor
+LandscapeEditor
   CMakeLists.txt
   readme.md
   src/
@@ -31,13 +31,13 @@ DiligentSamples/Samples/LandscapeEditor
     ForwardDebugPipeline.cpp
 ```
 
-Register it from:
+Register it from the root project:
 
 ```text
-DiligentSamples/Samples/CMakeLists.txt
+CMakeLists.txt
 ```
 
-This keeps the first prototype close to existing sample infrastructure and reuses `SampleBase`.
+This keeps the first prototype out of the `DiligentSamples` submodule while still reusing Diligent's `add_sample_app()` and `SampleBase` infrastructure.
 
 ## Architecture
 
@@ -110,7 +110,7 @@ LandscapeEditor::Render()
 
 Minimum verification:
 
-1. Configure the project with Visual Studio 2022 CMake.
+1. Configure the project with Visual Studio 18 Community CMake.
 2. Build the `LandscapeEditor` target in `Release`.
 3. Confirm the target exists in the generated solution.
 4. Run the sample with at least one backend available on the machine.
@@ -126,7 +126,7 @@ If runtime verification is not possible in the current turn, record that as an o
 
 The first implementation should:
 
-1. Add `LandscapeEditor` sample files.
+1. Add root-owned `LandscapeEditor` sample files.
 2. Add `ForwardDebugPipeline` files.
 3. Register the sample in CMake.
 4. Build only the new target or the whole solution if needed.
