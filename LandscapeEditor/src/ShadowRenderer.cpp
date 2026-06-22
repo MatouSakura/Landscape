@@ -5,6 +5,7 @@
 #include "FrameResources.hpp"
 #include "MapHelper.hpp"
 #include "RenderDevice.h"
+#include "RenderQueue.hpp"
 #include "TerrainPatchRenderer.hpp"
 #include "Texture.h"
 
@@ -88,7 +89,7 @@ void ShadowRenderer::FillLightConstants(LightConstants& Constants) const
         Constants.ShadowViewProj[Cascade] = m_Cascades[Cascade].ViewProj;
 }
 
-void ShadowRenderer::Render(IDeviceContext* pContext, TerrainPatchRenderer& TerrainPatchRenderer)
+void ShadowRenderer::Render(IDeviceContext* pContext, TerrainPatchRenderer& TerrainPatchRenderer, const std::vector<RenderItem>& TerrainItems)
 {
     for (Uint32 Cascade = 0; Cascade < CascadeCount; ++Cascade)
     {
@@ -100,7 +101,11 @@ void ShadowRenderer::Render(IDeviceContext* pContext, TerrainPatchRenderer& Terr
         ITextureView* pDSV = m_Cascades[Cascade].DSV;
         pContext->SetRenderTargets(0, nullptr, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
         pContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.0f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-        TerrainPatchRenderer.RenderShadow(pContext, m_pShadowConstantsCB);
+        for (const RenderItem& Item : TerrainItems)
+        {
+            if (Item.Kind == RenderItemKind::TerrainLeaf)
+                TerrainPatchRenderer.RenderShadow(pContext, m_pShadowConstantsCB, Item.TerrainRegion);
+        }
     }
 }
 

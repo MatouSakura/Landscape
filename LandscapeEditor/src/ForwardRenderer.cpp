@@ -23,6 +23,10 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.PSOCount         = m_PSOCache.GetPSOCount();
     m_Stats.PSOCreationCount = m_PSOCache.GetCreationCount();
     m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetTriangleCount();
+    m_Stats.TerrainRenderItemCount = 0;
+    m_Stats.TerrainRenderedCellCount = 0;
+    m_Stats.TerrainForwardDrawCallCount = 0;
+    m_Stats.TerrainShadowDrawCallCount = 0;
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
@@ -44,16 +48,25 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_TerrainQuadtree.Select(View.CameraPosition, m_TerrainQuadtreeSelection);
 
     m_RenderQueue.Clear();
-    m_RenderQueue.AddTerrainPatch();
+    const auto& QuadtreeNodes = m_TerrainQuadtree.GetNodes();
+    for (Uint32 NodeIndex : m_TerrainQuadtreeSelection.SelectedNodeIndices)
+    {
+        if (NodeIndex < QuadtreeNodes.size())
+        {
+            const TerrainDrawRegion Region = m_TerrainPatchRenderer.BuildDrawRegion(QuadtreeNodes[NodeIndex]);
+            m_RenderQueue.AddTerrainLeaf(Region);
+        }
+    }
     m_RenderQueue.AddTransparentQuad(length(View.CameraPosition - TransparentRenderer::GetTestQuadCenter()));
     m_RenderQueue.SortTransparentBackToFront();
     m_RenderQueue.AddDebugGrid();
+    m_TerrainPatchRenderer.BeginFrameStats();
 
     LightConstants LightData{};
     m_ShadowRenderer.FillLightConstants(LightData);
     FrameResources.UpdateLightConstants(pContext, LightData);
 
-    m_ShadowRenderer.Render(pContext, m_TerrainPatchRenderer);
+    m_ShadowRenderer.Render(pContext, m_TerrainPatchRenderer, m_RenderQueue.GetOpaqueItems());
 
     const float SceneClearColor[] = {0.08f, 0.09f, 0.10f, 1.0f};
     ITextureView* pRTV = m_PostProcessRenderer.PrepareSceneTarget(pContext, m_pSwapChain, SceneClearColor);
@@ -65,8 +78,8 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
 
     for (const RenderItem& Item : m_RenderQueue.GetOpaqueItems())
     {
-        if (Item.Kind == RenderItemKind::TerrainPatch)
-            m_TerrainPatchRenderer.Render(pContext, View, FrameResources, m_ShadowRenderer.GetCascadeSRV(0));
+        if (Item.Kind == RenderItemKind::TerrainLeaf)
+            m_TerrainPatchRenderer.Render(pContext, View, FrameResources, Item.TerrainRegion, m_ShadowRenderer.GetCascadeSRV(0));
     }
 
     if (!View.IsGL)
@@ -90,7 +103,11 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_PostProcessRenderer.Render(pContext, m_pSwapChain);
 
     m_Stats.OpaqueItemCount  = m_RenderQueue.GetQueueCount(RenderQueueType::Opaque);
-    m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetTriangleCount();
+    m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetLastRenderedTriangleCount();
+    m_Stats.TerrainRenderItemCount = m_RenderQueue.GetQueueCount(RenderQueueType::Opaque);
+    m_Stats.TerrainRenderedCellCount = m_TerrainPatchRenderer.GetLastRenderedCellCount();
+    m_Stats.TerrainForwardDrawCallCount = m_TerrainPatchRenderer.GetLastForwardDrawCallCount();
+    m_Stats.TerrainShadowDrawCallCount = m_TerrainPatchRenderer.GetLastShadowDrawCallCount();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();

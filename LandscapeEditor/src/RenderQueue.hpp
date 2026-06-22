@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BasicMath.hpp"
 #include "BasicTypes.h"
 
 #include <algorithm>
@@ -20,14 +21,28 @@ enum class RenderItemKind
 {
     DebugGrid,
     TerrainPatch,
+    TerrainLeaf,
     TransparentQuad
+};
+
+struct TerrainDrawRegion final
+{
+    Uint32 NodeIndex  = 0;
+    Uint32 Level      = 0;
+    float2 MinXZ      = {};
+    float2 MaxXZ      = {};
+    Uint32 FirstCellX = 0;
+    Uint32 FirstCellZ = 0;
+    Uint32 CellCountX = 0;
+    Uint32 CellCountZ = 0;
 };
 
 struct RenderItem final
 {
-    RenderQueueType Queue = RenderQueueType::Debug;
-    RenderItemKind  Kind  = RenderItemKind::DebugGrid;
-    float           SortDepth = 0.0f;
+    RenderQueueType  Queue = RenderQueueType::Debug;
+    RenderItemKind   Kind  = RenderItemKind::DebugGrid;
+    float            SortDepth = 0.0f;
+    TerrainDrawRegion TerrainRegion = {};
 };
 
 class RenderQueue final
@@ -43,6 +58,15 @@ public:
     void AddTerrainPatch()
     {
         m_OpaqueItems.push_back(RenderItem{RenderQueueType::Opaque, RenderItemKind::TerrainPatch});
+    }
+
+    void AddTerrainLeaf(const TerrainDrawRegion& Region)
+    {
+        RenderItem Item;
+        Item.Queue         = RenderQueueType::Opaque;
+        Item.Kind          = RenderItemKind::TerrainLeaf;
+        Item.TerrainRegion = Region;
+        m_OpaqueItems.push_back(Item);
     }
 
     void AddTransparentQuad(float SortDepth)

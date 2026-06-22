@@ -24,6 +24,10 @@ struct ForwardRendererStats final
 {
     Uint32 OpaqueItemCount    = 0;
     Uint32 TerrainTriangleCount = 0;
+    Uint32 TerrainRenderItemCount = 0;
+    Uint32 TerrainRenderedCellCount = 0;
+    Uint32 TerrainForwardDrawCallCount = 0;
+    Uint32 TerrainShadowDrawCallCount = 0;
     Uint32 TerrainCellCount   = 0;
     Uint32 TerrainSampleCountPerAxis = 0;
     float  TerrainMinHeight   = 0.0f;

@@ -10,6 +10,8 @@
 #include "ShaderResourceBinding.h"
 #include "SwapChain.h"
 
+#include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace Diligent
@@ -365,10 +367,49 @@ static RefCntAutoPtr<IPipelineState> CreateTerrainShadowPipelineState(IRenderDev
 
 } // namespace
 
+TerrainDrawRegion TerrainPatchRenderer::BuildDrawRegion(const TerrainQuadtreeNode& Node) const
+{
+    const Uint32 CellCount = m_HeightField.GetCellCount();
+    const float  InvSize   = CellCount > 0 ? static_cast<float>(CellCount) / (2.0f * m_TerrainExtent) : 0.0f;
+
+    auto ToCellBoundary = [&](float WorldCoord) {
+        const float CellCoord = (WorldCoord + m_TerrainExtent) * InvSize;
+        const Int32 Rounded = static_cast<Int32>(std::lround(CellCoord));
+        return static_cast<Uint32>(std::clamp<Int32>(Rounded, 0, static_cast<Int32>(CellCount)));
+    };
+
+    const Uint32 MinCellX = ToCellBoundary(Node.MinXZ.x);
+    const Uint32 MaxCellX = ToCellBoundary(Node.MaxXZ.x);
+    const Uint32 MinCellZ = ToCellBoundary(Node.MinXZ.y);
+    const Uint32 MaxCellZ = ToCellBoundary(Node.MaxXZ.y);
+
+    TerrainDrawRegion Region;
+    Region.NodeIndex  = Node.NodeIndex;
+    Region.Level      = Node.Level;
+    Region.MinXZ      = Node.MinXZ;
+    Region.MaxXZ      = Node.MaxXZ;
+    Region.FirstCellX = std::min(MinCellX, CellCount > 0 ? CellCount - 1u : 0u);
+    Region.FirstCellZ = std::min(MinCellZ, CellCount > 0 ? CellCount - 1u : 0u);
+
+    const Uint32 EndCellX = std::clamp(MaxCellX, Region.FirstCellX + 1u, CellCount);
+    const Uint32 EndCellZ = std::clamp(MaxCellZ, Region.FirstCellZ + 1u, CellCount);
+    Region.CellCountX = EndCellX - Region.FirstCellX;
+    Region.CellCountZ = EndCellZ - Region.FirstCellZ;
+    return Region;
+}
+
+void TerrainPatchRenderer::BeginFrameStats()
+{
+    m_LastRenderedCellCount    = 0;
+    m_LastForwardDrawCallCount = 0;
+    m_LastShadowDrawCallCount  = 0;
+}
+
 void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache)
 {
     TerrainHeightFieldDesc HeightFieldDesc;
     m_HeightField.GenerateProcedural(HeightFieldDesc);
+    m_TerrainExtent = HeightFieldDesc.Extent;
 
     const Uint32 CellCount   = m_HeightField.GetCellCount();
     const Uint32 SampleCount = m_HeightField.GetSampleCountPerAxis();
@@ -443,7 +484,7 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     m_pShadowPSO->CreateShaderResourceBinding(&m_pShadowSRB, true);
 }
 
-void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, ITextureView* pShadowMapSRV)
+void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainDrawRegion& Region, ITextureView* pShadowMapSRV)
 {
     (void)View;
 
@@ -467,14 +508,11 @@ void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& Vi
     pContext->SetPipelineState(m_pTerrainPSO);
     pContext->CommitShaderResources(m_pTerrainSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    DrawIndexedAttribs DrawAttrs;
-    DrawAttrs.IndexType  = VT_UINT32;
-    DrawAttrs.NumIndices = m_IndexCount;
-    DrawAttrs.Flags      = DRAW_FLAG_VERIFY_ALL;
-    pContext->DrawIndexed(DrawAttrs);
+    m_LastForwardDrawCallCount += DrawRegionIndexed(pContext, Region);
+    m_LastRenderedCellCount += Region.CellCountX * Region.CellCountZ;
 }
 
-void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShadowConstants)
+void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShadowConstants, const TerrainDrawRegion& Region)
 {
     auto* pShadowConstantsVar = m_pShadowSRB->GetVariableByName(SHADER_TYPE_VERTEX, "ShadowPassConstants");
     VERIFY_EXPR(pShadowConstantsVar != nullptr);
@@ -488,11 +526,27 @@ void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShad
     pContext->SetPipelineState(m_pShadowPSO);
     pContext->CommitShaderResources(m_pShadowSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    DrawIndexedAttribs DrawAttrs;
-    DrawAttrs.IndexType  = VT_UINT32;
-    DrawAttrs.NumIndices = m_IndexCount;
-    DrawAttrs.Flags      = DRAW_FLAG_VERIFY_ALL;
-    pContext->DrawIndexed(DrawAttrs);
+    m_LastShadowDrawCallCount += DrawRegionIndexed(pContext, Region);
+}
+
+Uint32 TerrainPatchRenderer::DrawRegionIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const
+{
+    if (Region.CellCountX == 0 || Region.CellCountZ == 0)
+        return 0;
+
+    const Uint32 TerrainCellCount = m_HeightField.GetCellCount();
+    Uint32 DrawCallCount = 0;
+    for (Uint32 LocalZ = 0; LocalZ < Region.CellCountZ; ++LocalZ)
+    {
+        DrawIndexedAttribs DrawAttrs;
+        DrawAttrs.IndexType          = VT_UINT32;
+        DrawAttrs.NumIndices         = Region.CellCountX * 6u;
+        DrawAttrs.FirstIndexLocation = ((Region.FirstCellZ + LocalZ) * TerrainCellCount + Region.FirstCellX) * 6u;
+        DrawAttrs.Flags              = DRAW_FLAG_VERIFY_ALL;
+        pContext->DrawIndexed(DrawAttrs);
+        ++DrawCallCount;
+    }
+    return DrawCallCount;
 }
 
 } // namespace Diligent

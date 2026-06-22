@@ -56,6 +56,9 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Opaque items: %u", Stats.OpaqueItemCount);
         ImGui::Text("Terrain tris: %u", Stats.TerrainTriangleCount);
         ImGui::Text("Terrain cells: %u", Stats.TerrainCellCount);
+        ImGui::Text("Terrain render items: %u", Stats.TerrainRenderItemCount);
+        ImGui::Text("Terrain rendered cells: %u", Stats.TerrainRenderedCellCount);
+        ImGui::Text("Terrain draw calls: %u forward / %u shadow", Stats.TerrainForwardDrawCallCount, Stats.TerrainShadowDrawCallCount);
         ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
         ImGui::Text("Height range: %.2f .. %.2f", Stats.TerrainMinHeight, Stats.TerrainMaxHeight);
         ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);

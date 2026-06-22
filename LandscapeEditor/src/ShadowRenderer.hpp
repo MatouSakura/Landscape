@@ -4,6 +4,8 @@
 #include "RefCntAutoPtr.hpp"
 #include "TextureView.h"
 
+#include <vector>
+
 namespace Diligent
 {
 
@@ -13,6 +15,7 @@ struct IRenderDevice;
 struct ITexture;
 class TerrainPatchRenderer;
 struct LightConstants;
+struct RenderItem;
 
 class ShadowRenderer final
 {
@@ -21,7 +24,7 @@ public:
 
     void Initialize(IRenderDevice* pDevice, bool UseGLProjection);
     void FillLightConstants(LightConstants& Constants) const;
-    void Render(IDeviceContext* pContext, TerrainPatchRenderer& TerrainPatchRenderer);
+    void Render(IDeviceContext* pContext, TerrainPatchRenderer& TerrainPatchRenderer, const std::vector<RenderItem>& TerrainItems);
 
     ITextureView* GetCascadeSRV(Uint32 Cascade) const { return m_Cascades[Cascade].SRV.RawPtr(); }
     Uint32 GetShadowMapSize() const { return m_ShadowMapSize; }
