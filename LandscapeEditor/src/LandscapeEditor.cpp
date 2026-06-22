@@ -22,6 +22,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
 
     m_FrameResources.Initialize(m_pDevice);
     m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
+    m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
     UpdateRenderView();
 }
 
@@ -58,6 +59,12 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
         ImGui::Text("Height range: %.2f .. %.2f", Stats.TerrainMinHeight, Stats.TerrainMaxHeight);
         ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);
+        if (ImGui::Checkbox("Show quadtree overlay", &m_ShowQuadtreeOverlay))
+            m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
+        ImGui::Text("Quadtree nodes: %u", Stats.TerrainQuadtreeNodeCount);
+        ImGui::Text("Selected leaves: %u", Stats.TerrainQuadtreeSelectedLeafCount);
+        ImGui::Text("Max quadtree depth: %u", Stats.TerrainQuadtreeMaxDepth);
+        ImGui::Text("Max selected LOD: %u", Stats.TerrainQuadtreeMaxSelectedLevel);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Sky passes: %u", Stats.SkyPassCount);

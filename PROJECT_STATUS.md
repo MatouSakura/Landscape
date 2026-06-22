@@ -133,10 +133,14 @@ Current implementation:
 - Uses shader tone mapping/gamma on D3D12, Vulkan, D3D11, and OpenGL.
 - Uses backend-specific shader source for postprocess: HLSL for D3D12/Vulkan/D3D11 and GLSL for OpenGL.
 - Renders a deterministic procedural heightfield terrain patch with CPU-generated normals, UVs, and height statistics.
+- Builds a complete CPU quadtree over the current terrain extent with stable node indices and contiguous direct child nodes.
+- Selects quadtree LOD leaves every frame from camera XZ distance.
+- Draws selected quadtree leaves through a debug line overlay with backend-specific GLSL for OpenGL.
+- Exposes quadtree node count, selected leaf count, max depth, max selected LOD, and overlay toggle in ImGui.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
-- Keeps external heightmap loading, full cascade selection/stabilization, production terrain materials, and quadtree LOD deferred until the terrain data model is expanded.
+- Keeps external heightmap loading, tiled terrain rendering from selected leaves, LOD crack fixing, full cascade selection/stabilization, and production terrain materials deferred until the terrain data model is expanded.
 
 Validation completed on 2026-06-22:
 
@@ -193,6 +197,25 @@ Heightfield terrain patch validation completed on 2026-06-23:
   - D3D11: `build\Win64-vs18\smoke-heightfield-d3d11\landscape_heightfield_d3d11.png`
   - OpenGL: `build\Win64-vs18\smoke-heightfield-gl\landscape_heightfield_gl.png`
 - Pixel check: all four captures are `640x480`, have visible terrain/grid/transparent/sky content, and include non-background coverage across the full frame.
+
+CPU quadtree LOD selection validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-quadtree-d3d12\landscape_quadtree_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-quadtree-vk\landscape_quadtree_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-quadtree-d3d11\landscape_quadtree_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-quadtree-gl\landscape_quadtree_gl.png`
+- Pixel check: all four captures are `640x480`, have visible terrain/grid/transparent/sky content, and include visible quadtree overlay line pixels.
+- Visual check: D3D12 capture shows selected quadtree leaf rectangles over the heightfield terrain.
+- Implementation note: the quadtree builder inserts each node's four direct children contiguously before recursively subdividing, so `FirstChildIndex + 0..3` is valid for SW, SE, NW, and NE traversal.
 
 ### Hardware / RTXNS Finding
 
@@ -293,11 +316,13 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 ### Phase 3: Quadtree LOD
 
-- Next: Split terrain into CPU quadtree nodes.
-- Next: Select LOD based on camera distance.
-- Next: Add debug overlay for selected quadtree nodes and LOD levels.
+- Done: Split terrain into CPU quadtree nodes with stable node indices.
+- Done: Select LOD based on camera XZ distance.
+- Done: Add debug overlay for selected quadtree nodes and LOD levels.
+- Next: Convert selected quadtree leaves into terrain render items.
+- Next: Decide whether selected leaves use per-node mesh buffers or a reusable grid mesh with per-node constants.
 - Later: Add frustum culling once node bounds are stable.
-- Later: Render selected leaf nodes as terrain tiles.
+- Later: Render selected leaf nodes as terrain tiles with crack handling.
 
 ### Phase 4: LOD Crack Fixing
 
@@ -489,11 +514,11 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Implement the CPU quadtree node model and camera-distance LOD selection plan in `docs/superpowers/plans/2026-06-23-cpu-quadtree-lod-selection.md`.
-2. Add quadtree debug overlay for selected nodes and LOD levels while keeping the existing heightfield patch renderer as the opaque terrain path.
-3. After selection is stable, define the terrain patch/tile boundary used by selected quadtree leaves.
+1. Convert selected quadtree leaves into terrain render items while keeping the existing heightfield patch as the source data.
+2. Choose the first tiled rendering strategy: per-node mesh buffers or one reusable grid mesh with per-node constants.
+3. Add a first-pass LOD crack policy, likely skirts before morphing.
 4. Add external heightmap loading for one fixed terrain patch.
-5. Keep OpenGL postprocess and OpenGL sky/terrain paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
+5. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
 ## Notes
 

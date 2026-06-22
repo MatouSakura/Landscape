@@ -7,6 +7,8 @@
 #include "ShadowRenderer.hpp"
 #include "SkyRenderer.hpp"
 #include "TerrainPatchRenderer.hpp"
+#include "TerrainQuadtree.hpp"
+#include "TerrainQuadtreeDebugRenderer.hpp"
 #include "TransparentRenderer.hpp"
 
 namespace Diligent
@@ -33,6 +35,10 @@ struct ForwardRendererStats final
     Uint32 TransparentItemCount = 0;
     Uint32 TransparentPassCount = 0;
     Uint32 DebugItemCount     = 0;
+    Uint32 TerrainQuadtreeNodeCount = 0;
+    Uint32 TerrainQuadtreeSelectedLeafCount = 0;
+    Uint32 TerrainQuadtreeMaxDepth = 0;
+    Uint32 TerrainQuadtreeMaxSelectedLevel = 0;
     Uint32 PostProcessPassCount = 0;
     size_t PSOCount           = 0;
     size_t PSOCreationCount = 0;
@@ -45,10 +51,15 @@ public:
     void Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources);
 
     const ForwardRendererStats& GetStats() const { return m_Stats; }
+    void SetShowQuadtreeOverlay(bool Show) { m_ShowQuadtreeOverlay = Show; }
+    bool GetShowQuadtreeOverlay() const { return m_ShowQuadtreeOverlay; }
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;
     TerrainPatchRenderer  m_TerrainPatchRenderer;
+    TerrainQuadtree       m_TerrainQuadtree;
+    TerrainQuadtreeSelection m_TerrainQuadtreeSelection;
+    TerrainQuadtreeDebugRenderer m_TerrainQuadtreeDebugRenderer;
     ShadowRenderer        m_ShadowRenderer;
     SkyRenderer           m_SkyRenderer;
     TransparentRenderer   m_TransparentRenderer;
@@ -57,6 +68,7 @@ private:
     PSOCache              m_PSOCache;
     ForwardRendererStats  m_Stats;
     ISwapChain*           m_pSwapChain = nullptr;
+    bool                  m_ShowQuadtreeOverlay = true;
 };
 
 } // namespace Diligent

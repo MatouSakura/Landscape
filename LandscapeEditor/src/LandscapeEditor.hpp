@@ -28,6 +28,7 @@ private:
     RenderView           m_RenderView;
     FrameResources       m_FrameResources;
     ForwardRenderer      m_ForwardRenderer;
+    bool                 m_ShowQuadtreeOverlay = true;
 };
 
 } // namespace Diligent

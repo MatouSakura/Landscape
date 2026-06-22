@@ -15,6 +15,9 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_PostProcessRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_SkyRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_TerrainPatchRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
+    TerrainQuadtreeDesc QuadtreeDesc;
+    m_TerrainQuadtree.Build(QuadtreeDesc);
+    m_TerrainQuadtreeDebugRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetSelectedLeafCapacity() * 8u);
     m_TransparentRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_ForwardDebugPipeline.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_Stats.PSOCount         = m_PSOCache.GetPSOCount();
@@ -25,6 +28,10 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
     m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
+    m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
+    m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
+    m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
     m_Stats.ShadowCascadeCount = ShadowRenderer::CascadeCount;
     m_Stats.ShadowMapSize      = m_ShadowRenderer.GetShadowMapSize();
     m_Stats.SkyPassCount       = m_SkyRenderer.GetPassCount();
@@ -34,6 +41,8 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 
 void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources)
 {
+    m_TerrainQuadtree.Select(View.CameraPosition, m_TerrainQuadtreeSelection);
+
     m_RenderQueue.Clear();
     m_RenderQueue.AddTerrainPatch();
     m_RenderQueue.AddTransparentQuad(length(View.CameraPosition - TransparentRenderer::GetTestQuadCenter()));
@@ -75,6 +84,9 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
             m_ForwardDebugPipeline.Render(pContext, View, FrameResources);
     }
 
+    if (m_ShowQuadtreeOverlay)
+        m_TerrainQuadtreeDebugRenderer.Render(pContext, View, FrameResources, m_TerrainQuadtree, m_TerrainQuadtreeSelection);
+
     m_PostProcessRenderer.Render(pContext, m_pSwapChain);
 
     m_Stats.OpaqueItemCount  = m_RenderQueue.GetQueueCount(RenderQueueType::Opaque);
@@ -84,6 +96,10 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
     m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
+    m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
+    m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
+    m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
     m_Stats.ShadowCascadeCount = ShadowRenderer::CascadeCount;
     m_Stats.ShadowMapSize      = m_ShadowRenderer.GetShadowMapSize();
     m_Stats.SkyPassCount       = m_SkyRenderer.GetPassCount();

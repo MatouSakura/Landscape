@@ -13,6 +13,8 @@ set(SOURCE
     src/SkyRenderer.cpp
     src/TerrainHeightField.cpp
     src/TerrainPatchRenderer.cpp
+    src/TerrainQuadtree.cpp
+    src/TerrainQuadtreeDebugRenderer.cpp
     src/TransparentRenderer.cpp
 )
 
@@ -29,6 +31,8 @@ set(INCLUDE
     src/SkyRenderer.hpp
     src/TerrainHeightField.hpp
     src/TerrainPatchRenderer.hpp
+    src/TerrainQuadtree.hpp
+    src/TerrainQuadtreeDebugRenderer.hpp
     src/TransparentRenderer.hpp
 )
 

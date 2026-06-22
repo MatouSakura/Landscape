@@ -182,6 +182,40 @@ Visual acceptance:
 - Moving the camera changes selected leaf count and max selected level.
 - PSO creation count does not grow per frame.
 
+## Validation Record
+
+Completed on 2026-06-23.
+
+Build:
+- `LandscapeEditor` Release target built successfully with VS18 CMake:
+  `cmake --build E:\Landscape\build\Win64-vs18 --config Release --target LandscapeEditor --parallel`
+
+Static validation:
+- `tools\verify_landscape_stage4.py` passed.
+- `tools\verify_landscape_stage5.py` passed.
+- `tools\verify_landscape_stage6.py` passed.
+- `tools\verify_landscape_forward_completion.py` passed.
+- `tools\verify_landscape_heightfield.py` passed.
+- `tools\verify_landscape_quadtree_lod.py` passed after this validation record was added.
+
+Smoke:
+- D3D12 capture: `build\Win64-vs18\smoke-quadtree-d3d12\landscape_quadtree_d3d12.png`
+- Vulkan capture: `build\Win64-vs18\smoke-quadtree-vk\landscape_quadtree_vk.png`
+- D3D11 capture: `build\Win64-vs18\smoke-quadtree-d3d11\landscape_quadtree_d3d11.png`
+- OpenGL capture: `build\Win64-vs18\smoke-quadtree-gl\landscape_quadtree_gl.png`
+
+Pixel and visual acceptance:
+- All four captures are `640x480`.
+- All four captures contain visible terrain, grid, sky, transparent quad, and quadtree overlay content.
+- D3D12 visual inspection confirms selected quadtree leaf rectangles are visible above the heightfield terrain.
+- Pixel check counted overlay-like high-color-difference line pixels in all four backend captures.
+
+Implementation notes:
+- The quadtree builder was corrected to insert each node's SW, SE, NW, and NE direct children contiguously before recursively subdividing child subtrees. This preserves the `FirstChildIndex + 0..3` traversal contract used by selection.
+- Quadtree overlay rendering now occurs after the existing debug grid so the selected leaf rectangles remain legible in smoke captures.
+- OpenGL uses the dedicated GLSL debug overlay shader path.
+- PSO creation remains initialization-time only; the render loop does not call `PSOCache::GetOrCreate` or `CreateGraphicsPipelineState`.
+
 ## Commit Plan
 
 - Commit 1: Add quadtree data model and red/green validation.
