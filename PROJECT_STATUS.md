@@ -48,6 +48,8 @@ Primary reasons:
   `docs/superpowers/specs/2026-06-22-forward-debug-pipeline-design.md`
 - Added the broader forward renderer architecture design:
   `docs/superpowers/specs/2026-06-22-forward-renderer-architecture-design.md`
+- Added the implementation plan for the first runnable editor sample:
+  `docs/superpowers/plans/2026-06-22-landscape-editor-forward-debug.md`
 - The planned path is to bring up `LandscapeEditor` with a minimal `ForwardDebugPipeline`, then expand toward a normal `ForwardRenderer` with render queues, frame resources, PSO cache, terrain pass entry points, debug UI, and later Diligent `RenderStateCache` integration.
 
 ### Framework Build / Runtime Validation
