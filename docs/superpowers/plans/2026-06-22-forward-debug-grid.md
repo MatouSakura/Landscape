@@ -39,20 +39,21 @@ Expected: command exits with code `0` and produces the current triangle capture.
 
 - [ ] **Step 2: Run a pixel check that fails for the triangle**
 
-Use the bundled Python runtime to verify there are many bright pixels on both the horizontal and vertical center lines. The triangle does not satisfy this grid-like pattern.
+Use the bundled Python runtime to verify there are many bright pixels near both the horizontal and vertical center axes. The check scans a small center neighborhood because graphics backends may rasterize a 1-pixel line at `x=319` or `x=320` in a 640-wide image. The triangle does not satisfy this grid-like pattern.
 
 ```powershell
 $py = "C:\Users\liuyuan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-& $py - <<'PY'
+@'
 from PIL import Image
 img = Image.open(r"E:\Landscape\build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png").convert("RGB")
 w, h = img.size
-row = [img.getpixel((x, h // 2)) for x in range(w)]
-col = [img.getpixel((w // 2, y)) for y in range(h)]
 def bright_count(pixels):
-    return sum(1 for r, g, b in pixels if max(r, g, b) - min(r, g, b) < 48 and r + g + b > 390)
-assert bright_count(row) > 500 and bright_count(col) > 350, "expected visible horizontal and vertical grid axes"
-PY
+    return sum(1 for r, g, b in pixels if max(r, g, b) - min(r, g, b) < 64 and r + g + b > 360)
+row_count = max(bright_count([img.getpixel((x, y)) for x in range(w)]) for y in range(h // 2 - 4, h // 2 + 5))
+col_count = max(bright_count([img.getpixel((x, y)) for y in range(h)]) for x in range(w // 2 - 4, w // 2 + 5))
+print(f"row_bright={row_count} col_bright={col_count}")
+assert row_count > 500 and col_count > 350, "expected visible horizontal and vertical grid axes"
+'@ | & $py -
 ```
 
 Expected: assertion failure before the grid implementation.

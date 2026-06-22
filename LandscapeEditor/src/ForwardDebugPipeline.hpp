@@ -17,7 +17,7 @@ public:
     void Render(IDeviceContext* pContext);
 
 private:
-    RefCntAutoPtr<IPipelineState> m_pTrianglePSO;
+    RefCntAutoPtr<IPipelineState> m_pGridPSO;
 };
 
 } // namespace Diligent

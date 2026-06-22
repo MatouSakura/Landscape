@@ -99,13 +99,14 @@ Current implementation:
 - Registers a `LandscapeEditor` Diligent sample target.
 - Opens through the existing Diligent `SampleBase` application path.
 - Adds `ForwardDebugPipeline` as the first rendering boundary.
-- Renders a procedural HLSL triangle through `ForwardDebugPipeline`.
-- Keeps terrain grids, heightmaps, camera controls, debug UI, and PSO cache integration deferred until the target is stable.
+- Renders a procedural HLSL flat debug grid through `ForwardDebugPipeline`.
+- Keeps heightmaps, camera controls, debug UI, and PSO cache integration deferred until the grid target is stable.
 
 Validation completed on 2026-06-22:
 
 - Configure: Visual Studio 18 CMake, `build\Win64-vs18`.
 - Build: `LandscapeEditor` Release target succeeded.
+- D3D12 pixel check passed for the grid center axes: `row_bright=513`, `col_bright=385`.
 - Smoke runs succeeded on:
   - D3D12: `build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png`
   - Vulkan: `build\Win64-vs18\smoke-landscape-editor-vk\landscape_editor_vk.png`
@@ -181,8 +182,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 - Done: Add a new sample or app named `LandscapeEditor`.
 - Keep it separate from upstream Diligent samples where possible.
-- Done: Open a window and render a procedural triangle through `ForwardDebugPipeline`.
-- Next: Render a basic grid.
+- Done: Open a window and render through `ForwardDebugPipeline`.
+- Done: Replace the triangle with a flat debug grid.
 - Next: Add camera movement and a debug UI.
 
 ### Phase 2: Basic Heightmap Terrain
@@ -389,12 +390,11 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Replace the procedural triangle with a flat debug grid.
-2. Add camera movement.
-3. Add a minimal debug UI.
-4. Start defining the terrain patch data model.
-5. Replace the flat grid with a heightmap terrain patch.
-6. Add quadtree LOD selection.
+1. Add camera movement.
+2. Add a minimal debug UI.
+3. Start defining the terrain patch data model.
+4. Replace the flat grid with a heightmap terrain patch.
+5. Add quadtree LOD selection.
 
 ## Notes
 
