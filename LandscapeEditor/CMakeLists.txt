@@ -3,13 +3,16 @@ cmake_minimum_required (VERSION 3.10)
 project(LandscapeEditor CXX)
 
 set(SOURCE
+    src/FrameResources.cpp
     src/ForwardDebugPipeline.cpp
     src/LandscapeEditor.cpp
 )
 
 set(INCLUDE
+    src/FrameResources.hpp
     src/ForwardDebugPipeline.hpp
     src/LandscapeEditor.hpp
+    src/RenderView.hpp
 )
 
 add_sample_app(LandscapeEditor

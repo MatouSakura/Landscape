@@ -1,8 +1,11 @@
 #include "ForwardDebugPipeline.hpp"
 
 #include "DeviceContext.h"
+#include "Errors.hpp"
+#include "FrameResources.hpp"
 #include "RenderDevice.h"
 #include "Shader.h"
+#include "ShaderResourceBinding.h"
 #include "SwapChain.h"
 
 namespace Diligent
@@ -11,10 +14,19 @@ namespace Diligent
 namespace
 {
 
-static constexpr Uint32 GridResolution  = 10;
+static constexpr Uint32 GridResolution  = 40;
 static constexpr Uint32 GridVertexCount = (GridResolution + 1) * 4;
 
 static const char* ForwardDebugGridVS = R"(
+cbuffer CameraConstants
+{
+    float4x4 View;
+    float4x4 Projection;
+    float4x4 ViewProj;
+    float4   CameraPositionAndNear;
+    float4   ViewportSizeAndFar;
+};
+
 struct PSInput
 {
     float4 Pos   : SV_POSITION;
@@ -24,10 +36,10 @@ struct PSInput
 void main(in  uint    VertId : SV_VertexID,
           out PSInput PSIn)
 {
-    static const uint  GridResolution = 10;
+    static const uint  GridResolution = 40;
     static const uint  LinesPerAxis   = GridResolution + 1;
     static const uint  VertLinesEnd   = LinesPerAxis * 2;
-    static const float GridExtent     = 0.80;
+    static const float GridExtent     = 20.0;
 
     uint LineVertex = VertId & 1u;
     uint LineIndex  = VertId >> 1u;
@@ -39,14 +51,14 @@ void main(in  uint    VertId : SV_VertexID,
     float MinPos = -GridExtent;
     float MaxPos = +GridExtent;
 
-    float2 Pos = DrawsVerticalLine ?
-        float2(Coord, LineVertex == 0u ? MinPos : MaxPos) :
-        float2(LineVertex == 0u ? MinPos : MaxPos, Coord);
+    float3 WorldPos = DrawsVerticalLine ?
+        float3(Coord, 0.0, LineVertex == 0u ? MinPos : MaxPos) :
+        float3(LineVertex == 0u ? MinPos : MaxPos, 0.0, Coord);
 
     bool IsAxis = LocalLineIndex == GridResolution / 2u;
 
-    PSIn.Pos   = float4(Pos, 0.0, 1.0);
-    PSIn.Color = IsAxis ? float3(0.88, 0.92, 0.95) : float3(0.24, 0.28, 0.30);
+    PSIn.Pos   = mul(float4(WorldPos, 1.0), ViewProj);
+    PSIn.Color = IsAxis ? float3(0.88, 0.92, 0.95) : float3(0.20, 0.25, 0.28);
 }
 )";
 
@@ -89,6 +101,7 @@ void ForwardDebugPipeline::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     ShaderCI.SourceLanguage                  = SHADER_SOURCE_LANGUAGE_HLSL;
     ShaderCI.Desc.UseCombinedTextureSamplers = true;
     ShaderCI.EntryPoint                      = "main";
+    ShaderCI.CompileFlags                    = SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
 
     RefCntAutoPtr<IShader> pVS;
     {
@@ -108,15 +121,25 @@ void ForwardDebugPipeline::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
 
     PSOCreateInfo.pVS = pVS;
     PSOCreateInfo.pPS = pPS;
+    PSOCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE;
     pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pGridPSO);
+    m_pGridPSO->CreateShaderResourceBinding(&m_pGridSRB, true);
 }
 
-void ForwardDebugPipeline::Render(IDeviceContext* pContext)
+void ForwardDebugPipeline::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources)
 {
+    (void)View;
+
+    auto* pCameraConstants = m_pGridSRB->GetVariableByName(SHADER_TYPE_VERTEX, "CameraConstants");
+    VERIFY_EXPR(pCameraConstants != nullptr);
+    pCameraConstants->Set(FrameResources.GetCameraConstantsBuffer());
+
     pContext->SetPipelineState(m_pGridPSO);
+    pContext->CommitShaderResources(m_pGridSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawAttribs DrawAttrs;
     DrawAttrs.NumVertices = GridVertexCount;
+    DrawAttrs.Flags       = DRAW_FLAG_VERIFY_ALL;
     pContext->Draw(DrawAttrs);
 }
 

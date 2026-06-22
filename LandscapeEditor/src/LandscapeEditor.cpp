@@ -1,5 +1,7 @@
 #include "LandscapeEditor.hpp"
 
+#include "imgui.h"
+
 namespace Diligent
 {
 
@@ -12,7 +14,15 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
 {
     SampleBase::Initialize(InitInfo);
 
+    m_Camera.SetPos(float3{0.0f, 6.0f, -14.0f});
+    m_Camera.SetRotation(0.0f, -0.4f);
+    m_Camera.SetMoveSpeed(8.0f);
+    m_Camera.SetSpeedUpScales(4.0f, 12.0f);
+    m_Camera.Update(GetInputController(), 0.0f);
+
+    m_FrameResources.Initialize(m_pDevice);
     m_ForwardDebugPipeline.Initialize(m_pDevice, m_pSwapChain);
+    UpdateRenderView();
 }
 
 void LandscapeEditor::Render()
@@ -24,12 +34,55 @@ void LandscapeEditor::Render()
     m_pImmediateContext->ClearRenderTarget(pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    m_ForwardDebugPipeline.Render(m_pImmediateContext);
+    m_FrameResources.UpdateCameraConstants(m_pImmediateContext, m_RenderView);
+    m_ForwardDebugPipeline.Render(m_pImmediateContext, m_RenderView, m_FrameResources);
 }
 
 void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateUI)
 {
     SampleBase::Update(CurrTime, ElapsedTime, DoUpdateUI);
+    m_Camera.Update(GetInputController(), static_cast<float>(ElapsedTime));
+    UpdateRenderView();
+
+    if (DoUpdateUI)
+    {
+        ImGui::Begin("Landscape Forward");
+        ImGui::Text("Mode: Forward Debug");
+        ImGui::Text("Camera: %.2f %.2f %.2f", m_RenderView.CameraPosition.x, m_RenderView.CameraPosition.y, m_RenderView.CameraPosition.z);
+        ImGui::Text("Viewport: %.0f x %.0f", m_RenderView.ViewportSize.x, m_RenderView.ViewportSize.y);
+        ImGui::End();
+    }
+}
+
+void LandscapeEditor::WindowResize(Uint32 Width, Uint32 Height)
+{
+    SampleBase::WindowResize(Width, Height);
+    UpdateRenderView();
+}
+
+void LandscapeEditor::UpdateRenderView()
+{
+    const auto& SCDesc = m_pSwapChain->GetDesc();
+    const float Width  = static_cast<float>(SCDesc.Width != 0 ? SCDesc.Width : 1);
+    const float Height = static_cast<float>(SCDesc.Height != 0 ? SCDesc.Height : 1);
+
+    constexpr float NearPlane = 0.1f;
+    constexpr float FarPlane  = 1000.0f;
+    const float     Aspect    = Width / Height;
+    const bool      IsGL      = m_pDevice->GetDeviceInfo().IsGLDevice();
+
+    m_Camera.SetProjAttribs(NearPlane, FarPlane, Aspect, PI_F / 4.0f, SCDesc.PreTransform, IsGL);
+
+    m_RenderView.View           = m_Camera.GetViewMatrix();
+    m_RenderView.Projection     = m_Camera.GetProjMatrix();
+    m_RenderView.ViewProj       = m_RenderView.View * m_RenderView.Projection;
+    m_RenderView.CameraPosition = m_Camera.GetPos();
+    m_RenderView.NearPlane      = NearPlane;
+    m_RenderView.FarPlane       = FarPlane;
+    m_RenderView.ViewportSize   = float2{Width, Height};
+    m_RenderView.ColorFormat    = SCDesc.ColorBufferFormat;
+    m_RenderView.DepthFormat    = SCDesc.DepthBufferFormat;
+    m_RenderView.IsGL           = IsGL;
 }
 
 } // namespace Diligent

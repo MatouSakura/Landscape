@@ -24,6 +24,15 @@ This slice adds the first runtime camera, `RenderView`, and frame constant buffe
 - Run a D3D12 smoke capture.
 - Run the stage-2 validation script after implementation and confirm it passes.
 
+## Result
+
+- Red check: `tools\verify_landscape_stage2.py` initially failed because `RenderView`, `FrameResources`, camera ownership, and shader camera constants were absent.
+- Green check: `tools\verify_landscape_stage2.py` now passes.
+- Build: `LandscapeEditor` Release builds with VS 18 CMake.
+- Runtime: D3D12 smoke capture succeeded at `build\Win64-vs18\smoke-landscape-editor-stage2-d3d12\landscape_editor_stage2_d3d12.png`.
+- Pixel check: capture is `640x480`, has 3 unique colors, 984 bright axis pixels, and 23686 grid pixels.
+- Debug note: the first camera angle projected the world grid outside the capture; the initial pitch is now fixed at `-0.4` radians so the ground grid is visible from launch.
+
 ## Follow-Up
 
 The next slice will introduce `ForwardRenderer`, `RenderQueue`, and `PSOCache` so the grid is submitted through a normal renderer orchestration path.

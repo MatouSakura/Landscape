@@ -6,7 +6,8 @@ The first milestones keep the runtime deliberately small:
 
 - create a normal Diligent sample window;
 - initialize a `ForwardDebugPipeline`;
-- render a procedural flat debug grid;
+- render a procedural world-space debug grid through camera constants;
+- move around with the Diligent `FirstPersonCamera` input path;
 - verify the target through D3D12 and Vulkan smoke captures.
 
 This target will grow into the terrain bring-up app for grid rendering, heightmap patches, quadtree LOD, and debug visualization.

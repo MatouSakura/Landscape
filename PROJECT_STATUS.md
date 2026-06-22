@@ -54,6 +54,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-22-forward-debug-grid.md`
 - Added the complete forward pipeline implementation plan:
   `docs/superpowers/plans/2026-06-22-forward-pipeline-completion.md`
+- Added the camera, `RenderView`, and frame resources implementation plan:
+  `docs/superpowers/plans/2026-06-22-camera-render-view-frame-resources.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -101,13 +103,19 @@ Current implementation:
 - Registers a `LandscapeEditor` Diligent sample target.
 - Opens through the existing Diligent `SampleBase` application path.
 - Adds `ForwardDebugPipeline` as the first rendering boundary.
-- Renders a procedural HLSL flat debug grid through `ForwardDebugPipeline`.
-- Keeps heightmaps, camera controls, debug UI, and PSO cache integration deferred until the grid target is stable.
+- Owns a Diligent `FirstPersonCamera`.
+- Builds a `RenderView` each frame from camera, swap chain, and backend data.
+- Updates camera constants through `FrameResources`.
+- Renders a procedural HLSL world-space debug grid through `ForwardDebugPipeline`.
+- Keeps heightmaps, PSO cache integration, and full renderer orchestration deferred until the camera/grid path is stable.
 
 Validation completed on 2026-06-22:
 
 - Configure: Visual Studio 18 CMake, `build\Win64-vs18`.
 - Build: `LandscapeEditor` Release target succeeded.
+- Stage-2 validation script: `tools\verify_landscape_stage2.py`.
+- Stage-2 D3D12 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage2-d3d12\landscape_editor_stage2_d3d12.png`.
+- Stage-2 pixel check: `640x480`, 3 unique colors, 984 bright axis pixels, 23686 grid pixels.
 - D3D12 pixel check passed for the grid center axes: `row_bright=513`, `col_bright=385`.
 - Smoke runs succeeded on:
   - D3D12: `build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png`
@@ -186,12 +194,13 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Keep it separate from upstream Diligent samples where possible.
 - Done: Open a window and render through `ForwardDebugPipeline`.
 - Done: Replace the triangle with a flat debug grid.
-- Next: Add camera movement, `RenderView`, `FrameResources`, and a debug UI.
+- Done: Add camera movement, `RenderView`, and `FrameResources`.
+- Next: Introduce `ForwardRenderer`, `RenderQueue`, and project `PSOCache`.
 
 ### Phase 1.5: Complete Forward Pipeline
 
 - Planned: Add `ForwardRenderer`, `RenderQueue`, and project `PSOCache`.
-- Planned: Move the debug grid to world space through camera constants.
+- Done: Move the debug grid to world space through camera constants.
 - Planned: Add a CPU-generated flat terrain patch in `ForwardOpaque`.
 - Planned: Add sun light with four-cascade shadow maps.
 - Planned: Add procedural sky, transparent queue, tone mapping, and ImGui diagnostics.
@@ -258,7 +267,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 | BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
-| BUG-009 | Open | Medium | Forward pipeline | Complete forward renderer is not implemented yet; current renderer is still the flat debug grid slice. | Execute the complete forward pipeline plan in staged commits. |
+| BUG-009 | Open | Medium | Forward pipeline | Complete forward renderer is not implemented yet; current renderer has camera-driven world-space debug rendering but no renderer orchestration, terrain pass, shadows, sky, transparent, or postprocess. | Execute the remaining complete forward pipeline plan in staged commits. |
 
 ## Architecture Decisions
 
@@ -401,8 +410,8 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add camera movement.
-2. Add a minimal debug UI.
+1. Add `ForwardRenderer`, `RenderQueue`, and project `PSOCache`.
+2. Add a minimal debug UI backed by renderer settings and metrics.
 3. Start defining the terrain patch data model.
 4. Replace the flat grid with a heightmap terrain patch.
 5. Add quadtree LOD selection.
