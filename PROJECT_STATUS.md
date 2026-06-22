@@ -60,6 +60,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-22-forward-renderer-queue-pso-cache.md`
 - Added the sun light and CSM shadow implementation plan:
   `docs/superpowers/plans/2026-06-22-sun-csm-shadow.md`
+- Added the sky, transparent, and postprocess implementation plan:
+  `docs/superpowers/plans/2026-06-22-sky-transparent-postprocess.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
