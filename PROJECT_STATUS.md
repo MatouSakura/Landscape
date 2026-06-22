@@ -153,6 +153,14 @@ Validation completed on 2026-06-22:
 - Stage-6 D3D11 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage6-d3d11\landscape_editor_stage6_d3d11.png`.
 - Stage-6 OpenGL smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage6-gl\landscape_editor_stage6_gl.png`.
 - Stage-6 pixel check: all four captures are `640x480`, have visible sky/grid/terrain/transparent content, and have non-background coverage of 303360 pixels.
+- Final forward completion validation script: `tools\verify_landscape_forward_completion.py`.
+- Final validation confirmed Stage-2 through Stage-6 validation scripts still pass.
+- Final PSO stability check: renderer `Render()` methods do not call `PSOCache::GetOrCreate` or `CreateGraphicsPipelineState`; PSO creation is kept in initialization-time cache paths.
+- Final D3D12 smoke capture: `build\Win64-vs18\smoke-landscape-editor-final-d3d12\landscape_editor_final_d3d12.png`.
+- Final Vulkan smoke capture: `build\Win64-vs18\smoke-landscape-editor-final-vk\landscape_editor_final_vk.png`.
+- Final D3D11 smoke capture: `build\Win64-vs18\smoke-landscape-editor-final-d3d11\landscape_editor_final_d3d11.png`.
+- Final OpenGL smoke capture: `build\Win64-vs18\smoke-landscape-editor-final-gl\landscape_editor_final_gl.png`.
+- Final pixel check: all four captures are `640x480`, have visible sky/grid/terrain/transparent content, and have non-background coverage of 303360 pixels.
 - D3D12 pixel check passed for the grid center axes: `row_bright=513`, `col_bright=385`.
 - Smoke runs succeeded on:
   - D3D12: `build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png`
@@ -243,7 +251,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add a CPU-generated flat terrain patch in `ForwardOpaque`.
 - Done: Add sun light with four-cascade shadow maps.
 - Done: Add procedural sky, transparent queue, tone mapping, and ImGui diagnostics.
-- Next: Harden docs, PSO stability checks, and final four-backend smoke records.
+- Done: Harden docs, PSO stability checks, and final four-backend smoke records.
+- Complete: the first forward renderer milestone is ready for terrain data/quadtree work.
 
 ### Phase 2: Basic Heightmap Terrain
 
@@ -307,7 +316,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 | BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
-| BUG-009 | Open | Medium | Forward pipeline | The first complete forward pass chain is implemented, but final hardening is still pending: PSO creation-count stability, final docs, and final four-backend smoke records. | Execute the completion hardening slice. |
+| BUG-009 | Closed | Medium | Forward pipeline | The first complete forward pass chain has been implemented and hardened with PSO stability checks, final docs, and final D3D12/Vulkan/D3D11/OpenGL smoke records. | Reopen only if forward renderer smoke or validation regresses. |
 | BUG-010 | Open | Medium | OpenGL postprocess | OpenGL crashes during golden-image capture when the postprocess shader samples the offscreen scene color. The current OpenGL path uses `CopyTexture` as a fallback while D3D12, Vulkan, and D3D11 use shader tone mapping/gamma. | Investigate Diligent OpenGL texture state/SRV binding for scene-color sampling after the first forward pipeline is complete. |
 
 ## Architecture Decisions
@@ -451,11 +460,11 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Run final validation scripts for stages 2 through 6.
-2. Verify PSO creation count is stable across frames.
-3. Re-run final D3D12, Vulkan, D3D11, and OpenGL smoke captures.
-4. Commit and push the final forward pipeline hardening record.
-5. Start defining the heightmap terrain data model after the forward pipeline is hardened.
+1. Define the heightmap terrain data model.
+2. Add heightmap loading for one fixed terrain patch.
+3. Add generated normals or shader-side normal reconstruction.
+4. Start CPU quadtree node data structures and LOD selection.
+5. Investigate the OpenGL postprocess shader sampling crash recorded as `BUG-010` when the terrain path has momentum.
 
 ## Notes
 

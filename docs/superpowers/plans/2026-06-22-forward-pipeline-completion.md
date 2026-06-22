@@ -47,4 +47,29 @@ Final verification must run D3D12, Vulkan, D3D11, and OpenGL smoke captures.
 
 ## Current Slice
 
-Slice 1 records the complete forward pipeline target and fixes stale documentation that still referenced placing Landscape code in the Diligent samples submodule.
+The first complete forward pipeline milestone is complete as of 2026-06-22.
+
+Completed slices:
+
+- Root-owned `LandscapeEditor/` documentation and architecture sync.
+- Camera-driven `RenderView` and `FrameResources`.
+- `ForwardRenderer`, `RenderQueue`, and `PSOCache`.
+- CPU-generated flat terrain patch in `ForwardOpaque`.
+- Sun light constants and four-cascade shadow resources.
+- Procedural sky pass.
+- Transparent queue and alpha-blended transparent quad.
+- Scene-color target and postprocess pass boundary.
+- Final hardening script and four-backend smoke captures.
+
+Final validation:
+
+- Build: `cmake --build build\Win64-vs18 --config Release --target LandscapeEditor --parallel`.
+- Validation scripts: `tools\verify_landscape_stage2.py` through `tools\verify_landscape_stage6.py`, plus `tools\verify_landscape_forward_completion.py`.
+- Final D3D12 smoke: `build\Win64-vs18\smoke-landscape-editor-final-d3d12\landscape_editor_final_d3d12.png`.
+- Final Vulkan smoke: `build\Win64-vs18\smoke-landscape-editor-final-vk\landscape_editor_final_vk.png`.
+- Final D3D11 smoke: `build\Win64-vs18\smoke-landscape-editor-final-d3d11\landscape_editor_final_d3d11.png`.
+- Final OpenGL smoke: `build\Win64-vs18\smoke-landscape-editor-final-gl\landscape_editor_final_gl.png`.
+
+OpenGL note:
+
+- OpenGL uses a `CopyTexture` fallback for the postprocess boundary because the shader scene-color sampling path crashes during golden-image capture on this machine. This is tracked in `PROJECT_STATUS.md` as `BUG-010`.
