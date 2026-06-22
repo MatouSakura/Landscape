@@ -53,8 +53,8 @@ Validation:
 
 Debug note:
 
-- D3D12, Vulkan, and D3D11 use the shader tone-map/gamma postprocess path.
-- OpenGL hit an access violation when the postprocess shader sampled the offscreen scene color during golden-image capture. The OpenGL backend now uses a `CopyTexture` fallback for the postprocess boundary while keeping the offscreen scene-color architecture. This is tracked as a follow-up compatibility issue.
+- Original Stage-6 implementation used shader tone-map/gamma on D3D12, Vulkan, and D3D11, but OpenGL used a temporary `CopyTexture` fallback after an access violation during scene-color sampling.
+- Follow-up BUG-010 fix replaced the OpenGL fallback with dedicated GLSL postprocess shaders. All four backends now use shader postprocess.
 
 ## Follow-Up
 

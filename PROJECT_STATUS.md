@@ -64,6 +64,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-22-sky-transparent-postprocess.md`
 - Added the forward pipeline hardening plan:
   `docs/superpowers/plans/2026-06-22-forward-pipeline-hardening.md`
+- Added the OpenGL postprocess BUG-010 fix record:
+  `docs/superpowers/plans/2026-06-23-bug010-opengl-postprocess.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -124,8 +126,8 @@ Current implementation:
 - Renders a procedural sky pass after opaque terrain using far-depth testing.
 - Submits and renders a transparent alpha-blended test quad through a transparent queue.
 - Renders through a scene-color target and postprocess pass boundary.
-- Uses shader tone mapping/gamma on D3D12, Vulkan, and D3D11.
-- Uses an OpenGL `CopyTexture` fallback for the postprocess boundary because shader sampling of the scene color currently crashes during golden-image capture on this machine.
+- Uses shader tone mapping/gamma on D3D12, Vulkan, D3D11, and OpenGL.
+- Uses backend-specific shader source for postprocess: HLSL for D3D12/Vulkan/D3D11 and GLSL for OpenGL.
 - Keeps heightmaps, full cascade selection/stabilization, production terrain materials, and quadtree LOD deferred until the first forward renderer is hardened.
 
 Validation completed on 2026-06-22:
@@ -317,7 +319,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 | BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
 | BUG-009 | Closed | Medium | Forward pipeline | The first complete forward pass chain has been implemented and hardened with PSO stability checks, final docs, and final D3D12/Vulkan/D3D11/OpenGL smoke records. | Reopen only if forward renderer smoke or validation regresses. |
-| BUG-010 | Open | Medium | OpenGL postprocess | OpenGL crashes during golden-image capture when the postprocess shader samples the offscreen scene color. The current OpenGL path uses `CopyTexture` as a fallback while D3D12, Vulkan, and D3D11 use shader tone mapping/gamma. | Investigate Diligent OpenGL texture state/SRV binding for scene-color sampling after the first forward pipeline is complete. |
+| BUG-010 | Closed | Medium | OpenGL postprocess | OpenGL now uses a dedicated GLSL postprocess shader to sample the offscreen scene color. The old `CopyTexture` fallback has been removed, and all four backends use shader postprocess. | Reopen only if OpenGL postprocess smoke regresses. |
 
 ## Architecture Decisions
 
@@ -464,7 +466,7 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 2. Add heightmap loading for one fixed terrain patch.
 3. Add generated normals or shader-side normal reconstruction.
 4. Start CPU quadtree node data structures and LOD selection.
-5. Investigate the OpenGL postprocess shader sampling crash recorded as `BUG-010` when the terrain path has momentum.
+5. Keep OpenGL postprocess in the regular smoke set so `BUG-010` stays closed.
 
 ## Notes
 

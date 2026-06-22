@@ -39,7 +39,6 @@ private:
     Uint32                                 m_Height      = 0;
     TEXTURE_FORMAT                         m_ColorFormat = TEX_FORMAT_UNKNOWN;
     Uint32                                 m_PassCount   = 0;
-    bool                                   m_UseShaderPostProcess = true;
 };
 
 } // namespace Diligent

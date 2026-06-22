@@ -8,12 +8,14 @@
 #include "ShaderResourceBinding.h"
 #include "SwapChain.h"
 #include "Texture.h"
-#include "TextureView.h"
 
 namespace Diligent
 {
 
 namespace
+{
+
+namespace HLSL
 {
 
 static const char* PostProcessVS = R"(
@@ -59,8 +61,56 @@ void main(in PSInput PSIn, out PSOutput PSOut)
 }
 )";
 
+} // namespace HLSL
+
+namespace GLSL
+{
+
+static const char* PostProcessVS = R"(
+out vec2 VSOut_UV;
+
+#ifndef GL_ES
+out gl_PerVertex
+{
+    vec4 gl_Position;
+};
+#endif
+
+void main()
+{
+    vec2 Pos[3];
+    Pos[0] = vec2(-1.0, -1.0);
+    Pos[1] = vec2(-1.0,  3.0);
+    Pos[2] = vec2( 3.0, -1.0);
+
+    vec2 pos = Pos[gl_VertexID % 3];
+    VSOut_UV = pos * vec2(0.5, 0.5) + vec2(0.5, 0.5);
+    gl_Position = vec4(pos, -1.0, 1.0);
+}
+)";
+
+static const char* PostProcessPS = R"(
+uniform sampler2D g_SceneColor;
+
+in vec2 VSOut_UV;
+
+layout(location = 0) out vec4 PSOut_Color;
+
+void main()
+{
+    vec3 color = texture(g_SceneColor, VSOut_UV).rgb;
+    vec3 mapped = 1.0 - exp(-color * 1.05);
+    mapped = pow(clamp(mapped, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
+    PSOut_Color = vec4(mapped, 1.0);
+}
+)";
+
+} // namespace GLSL
+
 RefCntAutoPtr<IPipelineState> CreatePostProcessPipelineState(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 {
+    const bool IsGL = pDevice->GetDeviceInfo().IsGLDevice();
+
     GraphicsPipelineStateCreateInfo PSOCreateInfo;
 
     PSOCreateInfo.PSODesc.Name         = "LandscapeEditor tone map postprocess PSO";
@@ -73,16 +123,16 @@ RefCntAutoPtr<IPipelineState> CreatePostProcessPipelineState(IRenderDevice* pDev
     PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = False;
 
     ShaderCreateInfo ShaderCI;
-    ShaderCI.SourceLanguage                  = SHADER_SOURCE_LANGUAGE_HLSL;
+    ShaderCI.SourceLanguage                  = IsGL ? SHADER_SOURCE_LANGUAGE_GLSL : SHADER_SOURCE_LANGUAGE_HLSL;
     ShaderCI.Desc.UseCombinedTextureSamplers = true;
     ShaderCI.EntryPoint                      = "main";
-    ShaderCI.CompileFlags                    = SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
+    ShaderCI.CompileFlags                    = IsGL ? SHADER_COMPILE_FLAG_NONE : SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
 
     RefCntAutoPtr<IShader> pVS;
     {
         ShaderCI.Desc.ShaderType = SHADER_TYPE_VERTEX;
         ShaderCI.Desc.Name       = "LandscapeEditor postprocess fullscreen VS";
-        ShaderCI.Source          = PostProcessVS;
+        ShaderCI.Source          = IsGL ? GLSL::PostProcessVS : HLSL::PostProcessVS;
         pDevice->CreateShader(ShaderCI, &pVS);
     }
 
@@ -90,7 +140,7 @@ RefCntAutoPtr<IPipelineState> CreatePostProcessPipelineState(IRenderDevice* pDev
     {
         ShaderCI.Desc.ShaderType = SHADER_TYPE_PIXEL;
         ShaderCI.Desc.Name       = "LandscapeEditor tone map postprocess PS";
-        ShaderCI.Source          = PostProcessPS;
+        ShaderCI.Source          = IsGL ? GLSL::PostProcessPS : HLSL::PostProcessPS;
         pDevice->CreateShader(ShaderCI, &pPS);
     }
 
@@ -123,7 +173,6 @@ RefCntAutoPtr<IPipelineState> CreatePostProcessPipelineState(IRenderDevice* pDev
 void PostProcessRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache)
 {
     m_pDevice = pDevice;
-    m_UseShaderPostProcess = !pDevice->GetDeviceInfo().IsGLDevice();
     m_pPostProcessPSO = PSOCache.GetOrCreate("PostProcess.ToneMap.Fullscreen", [&]() {
         return CreatePostProcessPipelineState(pDevice, pSwapChain);
     });
@@ -141,16 +190,6 @@ ITextureView* PostProcessRenderer::PrepareSceneTarget(IDeviceContext* pContext, 
 void PostProcessRenderer::Render(IDeviceContext* pContext, ISwapChain* pSwapChain)
 {
     ITextureView* pRTV = pSwapChain->GetCurrentBackBufferRTV();
-
-    if (!m_UseShaderPostProcess)
-    {
-        pContext->SetRenderTargets(0, nullptr, nullptr, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-        CopyTextureAttribs CopyAttribs{m_pSceneColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, pRTV->GetTexture(), RESOURCE_STATE_TRANSITION_MODE_TRANSITION};
-        pContext->CopyTexture(CopyAttribs);
-        ++m_PassCount;
-        return;
-    }
-
     pContext->SetRenderTargets(1, &pRTV, nullptr, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     auto* pSceneColor = m_pPostProcessSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_SceneColor");
@@ -164,6 +203,8 @@ void PostProcessRenderer::Render(IDeviceContext* pContext, ISwapChain* pSwapChai
     DrawAttrs.NumVertices = 3;
     DrawAttrs.Flags       = DRAW_FLAG_VERIFY_ALL;
     pContext->Draw(DrawAttrs);
+
+    pContext->SetRenderTargets(0, nullptr, nullptr, RESOURCE_STATE_TRANSITION_MODE_NONE);
 
     ++m_PassCount;
 }

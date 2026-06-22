@@ -18,6 +18,11 @@ def require_contains(text: str, pattern: str, description: str) -> None:
         raise AssertionError(f"missing {description}")
 
 
+def require_not_contains(text: str, pattern: str, description: str) -> None:
+    if re.search(pattern, text, re.MULTILINE | re.DOTALL):
+        raise AssertionError(f"unexpected {description}")
+
+
 def main() -> int:
     files = {
         "cmake": "LandscapeEditor/CMakeLists.txt",
@@ -53,7 +58,9 @@ def main() -> int:
         ("transparent_pso_cache", lambda: require_contains(f("transparent_cpp"), r"PSOCache\.GetOrCreate\(\"ForwardTransparent\.TestQuad\.AlphaBlend\"", "transparent PSO cache key")),
         ("post_scene_target", lambda: require_contains(f("post_cpp"), r"BIND_RENDER_TARGET\s*\|\s*BIND_SHADER_RESOURCE", "postprocess scene color target")),
         ("post_scene_shader_resource", lambda: require_contains(f("post_cpp"), r"g_SceneColor", "postprocess scene color shader resource")),
-        ("post_gl_copy_fallback", lambda: require_contains(f("post_cpp"), r"IsGLDevice\(\).*CopyTexture", "OpenGL postprocess copy fallback")),
+        ("post_gl_shader_language", lambda: require_contains(f("post_cpp"), r"SHADER_SOURCE_LANGUAGE_GLSL", "OpenGL GLSL postprocess shader path")),
+        ("post_gl_sampler", lambda: require_contains(f("post_cpp"), r"uniform\s+sampler2D\s+g_SceneColor", "OpenGL scene color sampler")),
+        ("post_no_copy_fallback", lambda: require_not_contains(f("post_cpp"), r"CopyTexture", "OpenGL CopyTexture postprocess fallback")),
         ("post_pso_cache", lambda: require_contains(f("post_cpp"), r"PSOCache\.GetOrCreate\(\"PostProcess\.ToneMap\.Fullscreen\"", "postprocess PSO cache key")),
         ("renderer_members", lambda: require_contains(f("renderer_hpp"), r"SkyRenderer\s+m_SkyRenderer.*TransparentRenderer\s+m_TransparentRenderer.*PostProcessRenderer\s+m_PostProcessRenderer", "ForwardRenderer pass members")),
         ("renderer_order", lambda: require_contains(f("renderer_cpp"), r"ShadowRenderer\.Render.*PrepareSceneTarget.*TerrainPatchRenderer\.Render.*SkyRenderer\.Render.*GetTransparentItems.*TransparentRenderer\.Render.*ForwardDebugPipeline\.Render.*PostProcessRenderer\.Render", "forward pass order")),

@@ -18,6 +18,11 @@ def require_contains(text: str, pattern: str, description: str) -> None:
         raise AssertionError(f"missing {description}")
 
 
+def require_not_contains(text: str, pattern: str, description: str) -> None:
+    if re.search(pattern, text, re.MULTILINE | re.DOTALL):
+        raise AssertionError(f"unexpected {description}")
+
+
 def iter_render_function_bodies(text: str):
     pattern = re.compile(r"\bvoid\s+([A-Za-z0-9_]+::Render)\s*\([^)]*\)\s*\{", re.MULTILINE)
     for match in pattern.finditer(text):
@@ -75,8 +80,10 @@ def main() -> int:
         ("queue_transparent_sort", lambda: require_contains(f("queue_hpp"), r"AddTransparentQuad.*SortTransparentBackToFront.*GetTransparentItems", "transparent queue sorting")),
         ("postprocess_scene_target", lambda: require_contains(f("post_cpp"), r"BIND_RENDER_TARGET\s*\|\s*BIND_SHADER_RESOURCE", "postprocess scene-color target")),
         ("postprocess_scene_shader_resource", lambda: require_contains(f("post_cpp"), r"g_SceneColor", "postprocess scene-color shader resource")),
-        ("opengl_fallback", lambda: require_contains(f("post_cpp"), r"IsGLDevice\(\).*CopyTexture", "OpenGL postprocess copy fallback")),
-        ("status_bug_010", lambda: require_contains(f("status"), r"BUG-010.*OpenGL postprocess", "OpenGL postprocess issue documented")),
+        ("opengl_glsl_language", lambda: require_contains(f("post_cpp"), r"SHADER_SOURCE_LANGUAGE_GLSL", "OpenGL GLSL postprocess shader language")),
+        ("opengl_glsl_sampler", lambda: require_contains(f("post_cpp"), r"uniform\s+sampler2D\s+g_SceneColor", "OpenGL GLSL scene color sampler")),
+        ("no_copytexture_fallback", lambda: require_not_contains(f("post_cpp"), r"CopyTexture", "OpenGL CopyTexture fallback")),
+        ("status_bug_010_closed", lambda: require_contains(f("status"), r"\| BUG-010 \| Closed \|.*OpenGL postprocess", "OpenGL postprocess issue closed")),
         ("completion_plan_exists", lambda: f("completion_plan")),
         ("hardening_plan_exists", lambda: f("hardening_plan")),
         ("no_pso_creation_in_render", lambda: require_no_pso_creation_in_render(renderer_sources)),

@@ -72,4 +72,4 @@ Final validation:
 
 OpenGL note:
 
-- OpenGL uses a `CopyTexture` fallback for the postprocess boundary because the shader scene-color sampling path crashes during golden-image capture on this machine. This is tracked in `PROJECT_STATUS.md` as `BUG-010`.
+- BUG-010 follow-up replaced the temporary OpenGL `CopyTexture` fallback with dedicated GLSL postprocess shaders. D3D12, Vulkan, D3D11, and OpenGL now all use shader postprocess for the scene-color target.
