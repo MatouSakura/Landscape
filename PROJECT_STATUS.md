@@ -68,6 +68,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-bug010-opengl-postprocess.md`
 - Added the heightfield terrain patch implementation plan:
   `docs/superpowers/plans/2026-06-23-heightfield-terrain-patch.md`
+- Added the CPU quadtree LOD selection implementation plan:
+  `docs/superpowers/plans/2026-06-23-cpu-quadtree-lod-selection.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -291,11 +293,11 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 ### Phase 3: Quadtree LOD
 
-- Split terrain into quadtree nodes.
-- Select LOD based on camera distance.
-- Add frustum culling.
-- Render selected leaf nodes.
-- Add debug overlay for quadtree nodes and LOD levels.
+- Next: Split terrain into CPU quadtree nodes.
+- Next: Select LOD based on camera distance.
+- Next: Add debug overlay for selected quadtree nodes and LOD levels.
+- Later: Add frustum culling once node bounds are stable.
+- Later: Render selected leaf nodes as terrain tiles.
 
 ### Phase 4: LOD Crack Fixing
 
@@ -487,11 +489,11 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Start the CPU quadtree node model and LOD selection path.
-2. Add external heightmap loading for one fixed terrain patch.
-3. Define the terrain patch/tile boundary that both heightmap loading and quadtree leaves will use.
-4. Add quadtree debug overlay for selected nodes and LOD levels.
-5. Keep OpenGL postprocess in the regular smoke set so `BUG-010` stays closed.
+1. Implement the CPU quadtree node model and camera-distance LOD selection plan in `docs/superpowers/plans/2026-06-23-cpu-quadtree-lod-selection.md`.
+2. Add quadtree debug overlay for selected nodes and LOD levels while keeping the existing heightfield patch renderer as the opaque terrain path.
+3. After selection is stable, define the terrain patch/tile boundary used by selected quadtree leaves.
+4. Add external heightmap loading for one fixed terrain patch.
+5. Keep OpenGL postprocess and OpenGL sky/terrain paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
 ## Notes
 
