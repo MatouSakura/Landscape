@@ -3,6 +3,7 @@
 #include "DeviceContext.h"
 #include "Errors.hpp"
 #include "FrameResources.hpp"
+#include "PSOCache.hpp"
 #include "RenderDevice.h"
 #include "Shader.h"
 #include "ShaderResourceBinding.h"
@@ -83,7 +84,7 @@ void main(in  PSInput  PSIn,
 
 } // namespace
 
-void ForwardDebugPipeline::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
+static RefCntAutoPtr<IPipelineState> CreateGridPipelineState(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 {
     GraphicsPipelineStateCreateInfo PSOCreateInfo;
 
@@ -122,7 +123,17 @@ void ForwardDebugPipeline::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     PSOCreateInfo.pVS = pVS;
     PSOCreateInfo.pPS = pPS;
     PSOCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE;
-    pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &m_pGridPSO);
+    RefCntAutoPtr<IPipelineState> pGridPSO;
+    pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &pGridPSO);
+    return pGridPSO;
+}
+
+void ForwardDebugPipeline::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache)
+{
+    m_pGridPSO = PSOCache.GetOrCreate("ForwardDebug.Grid.LineList", [&]() {
+        return CreateGridPipelineState(pDevice, pSwapChain);
+    });
+
     m_pGridPSO->CreateShaderResourceBinding(&m_pGridSRB, true);
 }
 

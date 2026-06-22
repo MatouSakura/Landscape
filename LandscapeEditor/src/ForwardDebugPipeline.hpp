@@ -11,12 +11,13 @@ struct IRenderDevice;
 struct IShaderResourceBinding;
 struct ISwapChain;
 class FrameResources;
+class PSOCache;
 struct RenderView;
 
 class ForwardDebugPipeline final
 {
 public:
-    void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain);
+    void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache);
     void Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources);
 
 private:

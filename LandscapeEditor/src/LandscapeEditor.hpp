@@ -2,7 +2,7 @@
 
 #include "FirstPersonCamera.hpp"
 #include "FrameResources.hpp"
-#include "ForwardDebugPipeline.hpp"
+#include "ForwardRenderer.hpp"
 #include "RenderView.hpp"
 #include "SampleBase.hpp"
 
@@ -27,7 +27,7 @@ private:
     FirstPersonCamera    m_Camera;
     RenderView           m_RenderView;
     FrameResources       m_FrameResources;
-    ForwardDebugPipeline m_ForwardDebugPipeline;
+    ForwardRenderer      m_ForwardRenderer;
 };
 
 } // namespace Diligent

@@ -21,7 +21,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     m_Camera.Update(GetInputController(), 0.0f);
 
     m_FrameResources.Initialize(m_pDevice);
-    m_ForwardDebugPipeline.Initialize(m_pDevice, m_pSwapChain);
+    m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
     UpdateRenderView();
 }
 
@@ -35,7 +35,7 @@ void LandscapeEditor::Render()
     m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     m_FrameResources.UpdateCameraConstants(m_pImmediateContext, m_RenderView);
-    m_ForwardDebugPipeline.Render(m_pImmediateContext, m_RenderView, m_FrameResources);
+    m_ForwardRenderer.Render(m_pImmediateContext, m_RenderView, m_FrameResources);
 }
 
 void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateUI)
@@ -50,6 +50,10 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Mode: Forward Debug");
         ImGui::Text("Camera: %.2f %.2f %.2f", m_RenderView.CameraPosition.x, m_RenderView.CameraPosition.y, m_RenderView.CameraPosition.z);
         ImGui::Text("Viewport: %.0f x %.0f", m_RenderView.ViewportSize.x, m_RenderView.ViewportSize.y);
+        const auto& Stats = m_ForwardRenderer.GetStats();
+        ImGui::Text("Debug items: %u", Stats.DebugItemCount);
+        ImGui::Text("PSOs: %zu", Stats.PSOCount);
+        ImGui::Text("PSO creations: %zu", Stats.PSOCreationCount);
         ImGui::End();
     }
 }
