@@ -31,6 +31,7 @@ void LandscapeEditor::Render()
 
     ITextureView* pRTV = m_pSwapChain->GetCurrentBackBufferRTV();
     ITextureView* pDSV = m_pSwapChain->GetDepthBufferDSV();
+    m_pImmediateContext->SetRenderTargets(1, &pRTV, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearRenderTarget(pRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
     m_pImmediateContext->ClearDepthStencil(pDSV, CLEAR_DEPTH_FLAG, 1.f, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
@@ -53,6 +54,10 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         const auto& Stats = m_ForwardRenderer.GetStats();
         ImGui::Text("Opaque items: %u", Stats.OpaqueItemCount);
         ImGui::Text("Terrain tris: %u", Stats.TerrainTriangleCount);
+        ImGui::Text("Terrain cells: %u", Stats.TerrainCellCount);
+        ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
+        ImGui::Text("Height range: %.2f .. %.2f", Stats.TerrainMinHeight, Stats.TerrainMaxHeight);
+        ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Sky passes: %u", Stats.SkyPassCount);

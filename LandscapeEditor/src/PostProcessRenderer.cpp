@@ -183,8 +183,10 @@ void PostProcessRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapCh
 ITextureView* PostProcessRenderer::PrepareSceneTarget(IDeviceContext* pContext, ISwapChain* pSwapChain, const float ClearColor[4])
 {
     EnsureSceneTarget(pSwapChain);
-    pContext->ClearRenderTarget(m_pSceneColorRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
-    return m_pSceneColorRTV.RawPtr();
+    ITextureView* pSceneRTV = m_pSceneColorRTV;
+    pContext->SetRenderTargets(1, &pSceneRTV, nullptr, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    pContext->ClearRenderTarget(pSceneRTV, ClearColor, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+    return pSceneRTV;
 }
 
 void PostProcessRenderer::Render(IDeviceContext* pContext, ISwapChain* pSwapChain)

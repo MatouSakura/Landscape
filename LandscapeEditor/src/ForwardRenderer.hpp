@@ -22,6 +22,11 @@ struct ForwardRendererStats final
 {
     Uint32 OpaqueItemCount    = 0;
     Uint32 TerrainTriangleCount = 0;
+    Uint32 TerrainCellCount   = 0;
+    Uint32 TerrainSampleCountPerAxis = 0;
+    float  TerrainMinHeight   = 0.0f;
+    float  TerrainMaxHeight   = 0.0f;
+    float  TerrainAverageHeight = 0.0f;
     Uint32 ShadowCascadeCount = 0;
     Uint32 ShadowMapSize      = 0;
     Uint32 SkyPassCount       = 0;

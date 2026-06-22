@@ -1,6 +1,6 @@
 # Landscape Project Status
 
-Last updated: 2026-06-22
+Last updated: 2026-06-23
 
 This document records what has been done, what will be done next, and the current unresolved issues for the Landscape terrain project.
 
@@ -66,6 +66,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-22-forward-pipeline-hardening.md`
 - Added the OpenGL postprocess BUG-010 fix record:
   `docs/superpowers/plans/2026-06-23-bug010-opengl-postprocess.md`
+- Added the heightfield terrain patch implementation plan:
+  `docs/superpowers/plans/2026-06-23-heightfield-terrain-patch.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -128,7 +130,11 @@ Current implementation:
 - Renders through a scene-color target and postprocess pass boundary.
 - Uses shader tone mapping/gamma on D3D12, Vulkan, D3D11, and OpenGL.
 - Uses backend-specific shader source for postprocess: HLSL for D3D12/Vulkan/D3D11 and GLSL for OpenGL.
-- Keeps heightmaps, full cascade selection/stabilization, production terrain materials, and quadtree LOD deferred until the first forward renderer is hardened.
+- Renders a deterministic procedural heightfield terrain patch with CPU-generated normals, UVs, and height statistics.
+- Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
+- Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
+- Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
+- Keeps external heightmap loading, full cascade selection/stabilization, production terrain materials, and quadtree LOD deferred until the terrain data model is expanded.
 
 Validation completed on 2026-06-22:
 
@@ -169,6 +175,22 @@ Validation completed on 2026-06-22:
   - Vulkan: `build\Win64-vs18\smoke-landscape-editor-vk\landscape_editor_vk.png`
   - D3D11: `build\Win64-vs18\smoke-landscape-editor-d3d11\landscape_editor_d3d11.png`
   - OpenGL: `build\Win64-vs18\smoke-landscape-editor-gl\landscape_editor_gl.png`
+
+Heightfield terrain patch validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-heightfield-d3d12\landscape_heightfield_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-heightfield-vk\landscape_heightfield_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-heightfield-d3d11\landscape_heightfield_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-heightfield-gl\landscape_heightfield_gl.png`
+- Pixel check: all four captures are `640x480`, have visible terrain/grid/transparent/sky content, and include non-background coverage across the full frame.
 
 ### Hardware / RTXNS Finding
 
@@ -258,11 +280,14 @@ This is treated as a reference-only project, not the Landscape runtime base.
 
 ### Phase 2: Basic Heightmap Terrain
 
-- Load a single heightmap.
-- Generate terrain vertex/index buffers.
-- Render a fixed-size terrain patch.
-- Add basic normal calculation.
-- Add a simple terrain material.
+- Done: Define the first heightfield terrain data model.
+- Done: Generate deterministic procedural height samples for one fixed patch.
+- Done: Generate terrain vertex/index buffers from height samples.
+- Done: Render a fixed-size heightfield terrain patch.
+- Done: Add basic CPU normal calculation.
+- Done: Add simple height/slope terrain material variation.
+- Next: Add external heightmap loading for one fixed terrain patch.
+- Next: Start CPU quadtree node model and LOD selection.
 
 ### Phase 3: Quadtree LOD
 
@@ -462,10 +487,10 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Define the heightmap terrain data model.
-2. Add heightmap loading for one fixed terrain patch.
-3. Add generated normals or shader-side normal reconstruction.
-4. Start CPU quadtree node data structures and LOD selection.
+1. Start the CPU quadtree node model and LOD selection path.
+2. Add external heightmap loading for one fixed terrain patch.
+3. Define the terrain patch/tile boundary that both heightmap loading and quadtree leaves will use.
+4. Add quadtree debug overlay for selected nodes and LOD levels.
 5. Keep OpenGL postprocess in the regular smoke set so `BUG-010` stays closed.
 
 ## Notes

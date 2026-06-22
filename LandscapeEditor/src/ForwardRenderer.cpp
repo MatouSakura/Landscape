@@ -20,6 +20,11 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.PSOCount         = m_PSOCache.GetPSOCount();
     m_Stats.PSOCreationCount = m_PSOCache.GetCreationCount();
     m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetTriangleCount();
+    m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
+    m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
+    m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
+    m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
+    m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
     m_Stats.ShadowCascadeCount = ShadowRenderer::CascadeCount;
     m_Stats.ShadowMapSize      = m_ShadowRenderer.GetShadowMapSize();
     m_Stats.SkyPassCount       = m_SkyRenderer.GetPassCount();
@@ -46,13 +51,17 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     ITextureView* pDSV = m_pSwapChain->GetDepthBufferDSV();
     pContext->SetRenderTargets(1, &pRTV, pDSV, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
+    if (View.IsGL)
+        m_SkyRenderer.Render(pContext, View);
+
     for (const RenderItem& Item : m_RenderQueue.GetOpaqueItems())
     {
         if (Item.Kind == RenderItemKind::TerrainPatch)
             m_TerrainPatchRenderer.Render(pContext, View, FrameResources, m_ShadowRenderer.GetCascadeSRV(0));
     }
 
-    m_SkyRenderer.Render(pContext, View);
+    if (!View.IsGL)
+        m_SkyRenderer.Render(pContext, View);
 
     for (const RenderItem& Item : m_RenderQueue.GetTransparentItems())
     {
@@ -70,6 +79,11 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
 
     m_Stats.OpaqueItemCount  = m_RenderQueue.GetQueueCount(RenderQueueType::Opaque);
     m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetTriangleCount();
+    m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
+    m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
+    m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
+    m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
+    m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
     m_Stats.ShadowCascadeCount = ShadowRenderer::CascadeCount;
     m_Stats.ShadowMapSize      = m_ShadowRenderer.GetShadowMapSize();
     m_Stats.SkyPassCount       = m_SkyRenderer.GetPassCount();

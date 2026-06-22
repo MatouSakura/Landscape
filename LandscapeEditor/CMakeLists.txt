@@ -11,6 +11,7 @@ set(SOURCE
     src/PSOCache.cpp
     src/ShadowRenderer.cpp
     src/SkyRenderer.cpp
+    src/TerrainHeightField.cpp
     src/TerrainPatchRenderer.cpp
     src/TransparentRenderer.cpp
 )
@@ -26,6 +27,7 @@ set(INCLUDE
     src/RenderView.hpp
     src/ShadowRenderer.hpp
     src/SkyRenderer.hpp
+    src/TerrainHeightField.hpp
     src/TerrainPatchRenderer.hpp
     src/TransparentRenderer.hpp
 )
