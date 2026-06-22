@@ -74,6 +74,16 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Culling: CPU frustum culling first, GPU culling later
 - Rendering path: indexed patch mesh first, indirect draw later
 
+### Rendering Pipeline
+
+- Keep two rendering pipelines available:
+  - `ForwardDebugPipeline` for early terrain validation, debug drawing, wireframe, LOD overlays, and simple fallback rendering.
+  - `DeferredPipeline` for the long-term opaque terrain path, GBuffer, lighting, decals, shadows, and post-processing.
+- Terrain rendering code must not be hard-bound to one pipeline.
+- Terrain systems should expose pass-oriented entry points such as depth, GBuffer, forward debug, and shadow rendering.
+- Pipeline state objects should be cached and reused instead of rebuilt during runtime pipeline switching.
+- Runtime pipeline switching should change the active pipeline and reuse cached PSOs where possible.
+
 ### Terrain Data
 
 - Height data: R16 or R32F heightmap
@@ -163,6 +173,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-004 | Open | Medium | Architecture | The final location for custom Landscape code is not decided yet: inside Diligent samples, separate app folder, or separate repository using Diligent as dependency. | Decide before adding prototype code. |
 | BUG-005 | Open | Low | Git tooling | GitHub CLI is not installed. GitHub auth currently uses Git Credential Manager over HTTPS. | Optional: install GitHub CLI later if repository automation becomes frequent. |
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
+| BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 
 ## Architecture Decisions
 
@@ -205,6 +216,39 @@ Reasoning:
 - Easier to compare with UE-style component and section concepts.
 - GPU culling and indirect draw can be added once the terrain data model is stable.
 
+### Decision 004: Support Forward Debug and Deferred Pipelines
+
+Support two render pipelines instead of locking the project to only forward or only deferred rendering.
+
+The first prototype should use a simple forward/debug path because it is easier to bring up and easier to debug. The long-term terrain path should be deferred because large opaque terrain, layered materials, decals, shadows, screen-space effects, and post-processing fit naturally into a GBuffer-based pipeline.
+
+Terrain rendering should be pass-oriented:
+
+- `DrawDepth()`
+- `DrawGBuffer()`
+- `DrawForwardDebug()`
+- `DrawShadow()`
+
+This keeps the terrain system independent of the selected pipeline.
+
+### Decision 005: Cache PSOs for Runtime Pipeline Switching
+
+Pipeline state objects should be created through a cache layer.
+
+The cache key should include at least:
+
+- Graphics backend.
+- Pipeline type.
+- Render pass / framebuffer format.
+- Shader variant.
+- Material variant.
+- Vertex layout.
+- Rasterizer state.
+- Depth and stencil state.
+- Blend state.
+
+Switching between forward debug and deferred rendering should select a different active pipeline and retrieve PSOs from the cache. It should not compile shaders or create PSOs during normal frame rendering.
+
 ## Useful Commands
 
 ### Clone With Submodules
@@ -243,10 +287,11 @@ cd E:\Landscape
 2. Run a Vulkan sample.
 3. Run a D3D12 sample.
 4. Decide where `LandscapePrototype` should live.
-5. Add the first prototype app.
-6. Render a flat grid.
-7. Replace the flat grid with a heightmap terrain patch.
-8. Add quadtree LOD selection.
+5. Define the initial pipeline interfaces and PSO cache shape.
+6. Add the first prototype app.
+7. Render a flat grid through `ForwardDebugPipeline`.
+8. Replace the flat grid with a heightmap terrain patch.
+9. Add quadtree LOD selection.
 
 ## Notes
 
