@@ -8,6 +8,7 @@ set(SOURCE
     src/ForwardRenderer.cpp
     src/LandscapeEditor.cpp
     src/PSOCache.cpp
+    src/ShadowRenderer.cpp
     src/TerrainPatchRenderer.cpp
 )
 
@@ -19,6 +20,7 @@ set(INCLUDE
     src/PSOCache.hpp
     src/RenderQueue.hpp
     src/RenderView.hpp
+    src/ShadowRenderer.hpp
     src/TerrainPatchRenderer.hpp
 )
 

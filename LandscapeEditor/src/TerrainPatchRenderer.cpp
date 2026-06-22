@@ -60,6 +60,19 @@ void main(in VSInput VSIn, out PSInput PSIn)
 )";
 
 static const char* TerrainPS = R"(
+cbuffer LightConstants
+{
+    float4   SunDirection;
+    float4   SunColor;
+    float4   AmbientColor;
+    float4x4 ShadowViewProj[4];
+    float4   CascadeSplits;
+    float4   ShadowParams;
+};
+
+Texture2D<float> g_ShadowMap0;
+SamplerState     g_ShadowMap0_sampler;
+
 struct PSInput
 {
     float4 Pos      : SV_POSITION;
@@ -74,10 +87,39 @@ struct PSOutput
 
 void main(in PSInput PSIn, out PSOutput PSOut)
 {
+    float3 normal = normalize(PSIn.Normal);
+    float ndotl = saturate(dot(normal, -SunDirection.xyz));
+
+    float4 shadowClip = mul(float4(PSIn.WorldPos, 1.0), ShadowViewProj[0]);
+    float3 shadowNDC = shadowClip.xyz / shadowClip.w;
+    float2 shadowUV = shadowNDC.xy * float2(0.5, -0.5) + 0.5;
+    float shadowDepth = g_ShadowMap0.SampleLevel(g_ShadowMap0_sampler, shadowUV, 0.0).r;
+    float receiverDepth = shadowNDC.z - ShadowParams.z;
+    float insideShadowMap = step(0.0, shadowUV.x) * step(0.0, shadowUV.y) * step(shadowUV.x, 1.0) * step(shadowUV.y, 1.0);
+    float shadowTerm = lerp(1.0, receiverDepth > shadowDepth ? 0.62 : 1.0, insideShadowMap);
+
     float checker = fmod(floor(PSIn.WorldPos.x * 0.5) + floor(PSIn.WorldPos.z * 0.5), 2.0);
     float3 baseColor = lerp(float3(0.10, 0.27, 0.18), float3(0.13, 0.34, 0.23), checker);
-    float light = 0.55 + 0.35 * saturate(PSIn.Normal.y);
-    PSOut.Color = float4(baseColor * light, 1.0);
+    float3 lighting = AmbientColor.rgb + SunColor.rgb * ndotl * shadowTerm;
+    PSOut.Color = float4(baseColor * lighting, 1.0);
+}
+)";
+
+static const char* TerrainShadowVS = R"(
+cbuffer ShadowPassConstants
+{
+    float4x4 ShadowViewProj;
+};
+
+struct VSInput
+{
+    float3 Pos    : ATTRIB0;
+    float3 Normal : ATTRIB1;
+};
+
+void main(in VSInput VSIn, out float4 Pos : SV_POSITION)
+{
+    Pos = mul(float4(VSIn.Pos, 1.0), ShadowViewProj);
 }
 )";
 
@@ -129,9 +171,65 @@ static RefCntAutoPtr<IPipelineState> CreateTerrainPipelineState(IRenderDevice* p
     PSOCreateInfo.pPS = pPS;
     PSOCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE;
 
+    SamplerDesc ShadowSampler;
+    ShadowSampler.MinFilter = FILTER_TYPE_LINEAR;
+    ShadowSampler.MagFilter = FILTER_TYPE_LINEAR;
+    ShadowSampler.MipFilter = FILTER_TYPE_LINEAR;
+    ShadowSampler.AddressU  = TEXTURE_ADDRESS_CLAMP;
+    ShadowSampler.AddressV  = TEXTURE_ADDRESS_CLAMP;
+    ShadowSampler.AddressW  = TEXTURE_ADDRESS_CLAMP;
+
+    ImmutableSamplerDesc ImmutableSamplers[] =
+    {
+        {SHADER_TYPE_PIXEL, "g_ShadowMap0", ShadowSampler}
+    };
+    PSOCreateInfo.PSODesc.ResourceLayout.ImmutableSamplers    = ImmutableSamplers;
+    PSOCreateInfo.PSODesc.ResourceLayout.NumImmutableSamplers = _countof(ImmutableSamplers);
+
     RefCntAutoPtr<IPipelineState> pTerrainPSO;
     pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &pTerrainPSO);
     return pTerrainPSO;
+}
+
+static RefCntAutoPtr<IPipelineState> CreateTerrainShadowPipelineState(IRenderDevice* pDevice)
+{
+    GraphicsPipelineStateCreateInfo PSOCreateInfo;
+
+    PSOCreateInfo.PSODesc.Name         = "LandscapeEditor terrain shadow PSO";
+    PSOCreateInfo.PSODesc.PipelineType = PIPELINE_TYPE_GRAPHICS;
+
+    PSOCreateInfo.GraphicsPipeline.NumRenderTargets             = 0;
+    PSOCreateInfo.GraphicsPipeline.DSVFormat                    = TEX_FORMAT_D16_UNORM;
+    PSOCreateInfo.GraphicsPipeline.PrimitiveTopology            = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    PSOCreateInfo.GraphicsPipeline.RasterizerDesc.CullMode      = CULL_MODE_NONE;
+    PSOCreateInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = True;
+
+    LayoutElement LayoutElems[] =
+    {
+        LayoutElement{0, 0, 3, VT_FLOAT32, False},
+        LayoutElement{1, 0, 3, VT_FLOAT32, False}
+    };
+    PSOCreateInfo.GraphicsPipeline.InputLayout.LayoutElements = LayoutElems;
+    PSOCreateInfo.GraphicsPipeline.InputLayout.NumElements    = _countof(LayoutElems);
+
+    ShaderCreateInfo ShaderCI;
+    ShaderCI.SourceLanguage                  = SHADER_SOURCE_LANGUAGE_HLSL;
+    ShaderCI.Desc.UseCombinedTextureSamplers = true;
+    ShaderCI.EntryPoint                      = "main";
+    ShaderCI.CompileFlags                    = SHADER_COMPILE_FLAG_PACK_MATRIX_ROW_MAJOR;
+    ShaderCI.Desc.ShaderType                 = SHADER_TYPE_VERTEX;
+    ShaderCI.Desc.Name                       = "LandscapeEditor terrain shadow VS";
+    ShaderCI.Source                          = TerrainShadowVS;
+
+    RefCntAutoPtr<IShader> pVS;
+    pDevice->CreateShader(ShaderCI, &pVS);
+
+    PSOCreateInfo.pVS = pVS;
+    PSOCreateInfo.PSODesc.ResourceLayout.DefaultVariableType = SHADER_RESOURCE_VARIABLE_TYPE_MUTABLE;
+
+    RefCntAutoPtr<IPipelineState> pShadowPSO;
+    pDevice->CreateGraphicsPipelineState(PSOCreateInfo, &pShadowPSO);
+    return pShadowPSO;
 }
 
 } // namespace
@@ -198,15 +296,28 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
         return CreateTerrainPipelineState(pDevice, pSwapChain);
     });
     m_pTerrainPSO->CreateShaderResourceBinding(&m_pTerrainSRB, true);
+
+    m_pShadowPSO = PSOCache.GetOrCreate("Shadow.TerrainPatch.Depth", [&]() {
+        return CreateTerrainShadowPipelineState(pDevice);
+    });
+    m_pShadowPSO->CreateShaderResourceBinding(&m_pShadowSRB, true);
 }
 
-void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources)
+void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, ITextureView* pShadowMapSRV)
 {
     (void)View;
 
     auto* pCameraConstants = m_pTerrainSRB->GetVariableByName(SHADER_TYPE_VERTEX, "CameraConstants");
     VERIFY_EXPR(pCameraConstants != nullptr);
     pCameraConstants->Set(FrameResources.GetCameraConstantsBuffer());
+
+    auto* pLightConstants = m_pTerrainSRB->GetVariableByName(SHADER_TYPE_PIXEL, "LightConstants");
+    VERIFY_EXPR(pLightConstants != nullptr);
+    pLightConstants->Set(FrameResources.GetLightConstantsBuffer());
+
+    auto* pShadowMap = m_pTerrainSRB->GetVariableByName(SHADER_TYPE_PIXEL, "g_ShadowMap0");
+    VERIFY_EXPR(pShadowMap != nullptr);
+    pShadowMap->Set(pShadowMapSRV);
 
     const Uint64 Offset = 0;
     IBuffer*     VBs[]  = {m_pVertexBuffer};
@@ -215,6 +326,27 @@ void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& Vi
 
     pContext->SetPipelineState(m_pTerrainPSO);
     pContext->CommitShaderResources(m_pTerrainSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    DrawIndexedAttribs DrawAttrs;
+    DrawAttrs.IndexType  = VT_UINT32;
+    DrawAttrs.NumIndices = m_IndexCount;
+    DrawAttrs.Flags      = DRAW_FLAG_VERIFY_ALL;
+    pContext->DrawIndexed(DrawAttrs);
+}
+
+void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShadowConstants)
+{
+    auto* pShadowConstantsVar = m_pShadowSRB->GetVariableByName(SHADER_TYPE_VERTEX, "ShadowPassConstants");
+    VERIFY_EXPR(pShadowConstantsVar != nullptr);
+    pShadowConstantsVar->Set(pShadowConstants);
+
+    const Uint64 Offset = 0;
+    IBuffer*     VBs[]  = {m_pVertexBuffer};
+    pContext->SetVertexBuffers(0, 1, VBs, &Offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
+    pContext->SetIndexBuffer(m_pIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+
+    pContext->SetPipelineState(m_pShadowPSO);
+    pContext->CommitShaderResources(m_pShadowSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawIndexedAttribs DrawAttrs;
     DrawAttrs.IndexType  = VT_UINT32;

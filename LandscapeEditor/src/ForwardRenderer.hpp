@@ -3,6 +3,7 @@
 #include "ForwardDebugPipeline.hpp"
 #include "PSOCache.hpp"
 #include "RenderQueue.hpp"
+#include "ShadowRenderer.hpp"
 #include "TerrainPatchRenderer.hpp"
 
 namespace Diligent
@@ -18,6 +19,8 @@ struct ForwardRendererStats final
 {
     Uint32 OpaqueItemCount    = 0;
     Uint32 TerrainTriangleCount = 0;
+    Uint32 ShadowCascadeCount = 0;
+    Uint32 ShadowMapSize      = 0;
     Uint32 DebugItemCount     = 0;
     size_t PSOCount           = 0;
     size_t PSOCreationCount = 0;
@@ -34,9 +37,11 @@ public:
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;
     TerrainPatchRenderer  m_TerrainPatchRenderer;
+    ShadowRenderer        m_ShadowRenderer;
     RenderQueue           m_RenderQueue;
     PSOCache              m_PSOCache;
     ForwardRendererStats  m_Stats;
+    ISwapChain*           m_pSwapChain = nullptr;
 };
 
 } // namespace Diligent

@@ -53,6 +53,8 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         const auto& Stats = m_ForwardRenderer.GetStats();
         ImGui::Text("Opaque items: %u", Stats.OpaqueItemCount);
         ImGui::Text("Terrain tris: %u", Stats.TerrainTriangleCount);
+        ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
+        ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Debug items: %u", Stats.DebugItemCount);
         ImGui::Text("PSOs: %zu", Stats.PSOCount);
         ImGui::Text("PSO creations: %zu", Stats.PSOCreationCount);

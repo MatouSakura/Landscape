@@ -20,16 +20,29 @@ struct CameraConstants final
     float4   ViewportSizeAndFar;
 };
 
+struct LightConstants final
+{
+    float4   SunDirection;
+    float4   SunColor;
+    float4   AmbientColor;
+    float4x4 ShadowViewProj[4];
+    float4   CascadeSplits;
+    float4   ShadowParams;
+};
+
 class FrameResources final
 {
 public:
     void Initialize(IRenderDevice* pDevice);
     void UpdateCameraConstants(IDeviceContext* pContext, const RenderView& View);
+    void UpdateLightConstants(IDeviceContext* pContext, const LightConstants& Constants);
 
     IBuffer* GetCameraConstantsBuffer() const { return m_pCameraConstantsCB.RawPtr(); }
+    IBuffer* GetLightConstantsBuffer() const { return m_pLightConstantsCB.RawPtr(); }
 
 private:
     RefCntAutoPtr<IBuffer> m_pCameraConstantsCB;
+    RefCntAutoPtr<IBuffer> m_pLightConstantsCB;
 };
 
 } // namespace Diligent
