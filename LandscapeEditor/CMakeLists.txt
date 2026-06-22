@@ -8,6 +8,7 @@ set(SOURCE
     src/ForwardRenderer.cpp
     src/LandscapeEditor.cpp
     src/PSOCache.cpp
+    src/TerrainPatchRenderer.cpp
 )
 
 set(INCLUDE
@@ -18,6 +19,7 @@ set(INCLUDE
     src/PSOCache.hpp
     src/RenderQueue.hpp
     src/RenderView.hpp
+    src/TerrainPatchRenderer.hpp
 )
 
 add_sample_app(LandscapeEditor

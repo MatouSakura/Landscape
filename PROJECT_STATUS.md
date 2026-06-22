@@ -125,6 +125,10 @@ Validation completed on 2026-06-22:
 - Stage-3 D3D12 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage3-d3d12\landscape_editor_stage3_d3d12.png`.
 - Stage-3 Vulkan smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage3-vk\landscape_editor_stage3_vk.png`.
 - Stage-3 pixel check: both captures are `640x480`, 3 unique colors, 984 bright axis pixels, 24670 non-background grid pixels.
+- Stage-4 validation script: `tools\verify_landscape_stage4.py`.
+- Stage-4 D3D12 smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage4-d3d12\landscape_editor_stage4_d3d12.png`.
+- Stage-4 Vulkan smoke capture: `build\Win64-vs18\smoke-landscape-editor-stage4-vk\landscape_editor_stage4_vk.png`.
+- Stage-4 pixel check: both captures are `640x480`, show terrain fill plus grid overlay, 984 bright axis pixels, 238720 non-background pixels, and 214050 terrain-like pixels.
 - D3D12 pixel check passed for the grid center axes: `row_bright=513`, `col_bright=385`.
 - Smoke runs succeeded on:
   - D3D12: `build\Win64-vs18\smoke-landscape-editor-d3d12\landscape_editor_d3d12.png`
@@ -205,13 +209,14 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Replace the triangle with a flat debug grid.
 - Done: Add camera movement, `RenderView`, and `FrameResources`.
 - Done: Introduce `ForwardRenderer`, `RenderQueue`, and project `PSOCache`.
-- Next: Add the first CPU-generated flat terrain patch.
+- Done: Add the first CPU-generated flat terrain patch.
+- Next: Add sun light and the first CSM shadow path.
 
 ### Phase 1.5: Complete Forward Pipeline
 
 - Done: Add `ForwardRenderer`, `RenderQueue`, and project `PSOCache`.
 - Done: Move the debug grid to world space through camera constants.
-- Planned: Add a CPU-generated flat terrain patch in `ForwardOpaque`.
+- Done: Add a CPU-generated flat terrain patch in `ForwardOpaque`.
 - Planned: Add sun light with four-cascade shadow maps.
 - Planned: Add procedural sky, transparent queue, tone mapping, and ImGui diagnostics.
 
@@ -277,7 +282,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 | BUG-006 | Open | Low | Git tooling | SSH push is not configured because no GitHub SSH key exists on this machine. | HTTPS push works; configure SSH only if needed. |
 | BUG-007 | Open | Medium | Rendering architecture | PSO cache design is not finalized. Pipeline switching should not rebuild PSOs during frame rendering. | Design PSO cache keys and validate Diligent PSO creation/reuse behavior. |
 | BUG-008 | Open | Medium | Build environment | VS2022 BuildTools is missing ATL (`atlbase.h`), causing D3D11/D3D12 support to be disabled and `Win32FileSystem.cpp` to fail during build. | Use VS 18 Community for now, or install the ATL/MFC component into VS2022 BuildTools later. |
-| BUG-009 | Open | Medium | Forward pipeline | Complete forward renderer is not implemented yet; current renderer has camera-driven world-space debug rendering, renderer orchestration, render queue submission, and PSO cache warm-up, but no terrain pass, shadows, sky, transparent, or postprocess. | Execute the remaining complete forward pipeline plan in staged commits. |
+| BUG-009 | Open | Medium | Forward pipeline | Complete forward renderer is not implemented yet; current renderer has camera-driven world-space debug rendering, renderer orchestration, render queue submission, PSO cache warm-up, and an opaque terrain patch, but no shadows, sky, transparent, or postprocess. | Execute the remaining complete forward pipeline plan in staged commits. |
 
 ## Architecture Decisions
 
@@ -420,8 +425,8 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add the first CPU-generated flat terrain patch.
-2. Route terrain patch rendering through the `Opaque` queue.
+1. Add sun light and four-cascade shadow resources.
+2. Render the terrain patch into the first shadow map path.
 3. Add a minimal debug UI backed by renderer settings and metrics.
 4. Start defining the heightmap terrain data model.
 5. Add quadtree LOD selection.

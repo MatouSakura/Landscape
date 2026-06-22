@@ -25,6 +25,16 @@ This keeps the current debug grid but makes the renderer draw an actual indexed 
 - Confirm captures show terrain fill plus grid overlay.
 - Confirm validation scripts for stages 2, 3, and 4 pass.
 
+## Result
+
+- Red check: `tools\verify_landscape_stage4.py` initially failed because `TerrainPatchRenderer`, opaque queue submission, and terrain buffers were absent.
+- Green check: `tools\verify_landscape_stage4.py` now passes.
+- Build: `LandscapeEditor` Release builds with VS 18 CMake.
+- Runtime D3D12: `build\Win64-vs18\smoke-landscape-editor-stage4-d3d12\landscape_editor_stage4_d3d12.png`.
+- Runtime Vulkan: `build\Win64-vs18\smoke-landscape-editor-stage4-vk\landscape_editor_stage4_vk.png`.
+- Pixel check: both captures are `640x480`, have terrain fill plus grid overlay, 984 bright axis pixels, 238720 non-background pixels, and 214050 terrain-like pixels.
+- Architecture result: `TerrainPatchRenderer` creates immutable vertex/index buffers, retrieves its PSO from `PSOCache`, and is drawn from `ForwardRenderer` through the `Opaque` queue before debug rendering.
+
 ## Follow-Up
 
 The next slice will add sun light and a four-cascade shadow-map path for the terrain patch.

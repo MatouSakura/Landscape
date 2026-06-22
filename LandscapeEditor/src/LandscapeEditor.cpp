@@ -51,6 +51,8 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Camera: %.2f %.2f %.2f", m_RenderView.CameraPosition.x, m_RenderView.CameraPosition.y, m_RenderView.CameraPosition.z);
         ImGui::Text("Viewport: %.0f x %.0f", m_RenderView.ViewportSize.x, m_RenderView.ViewportSize.y);
         const auto& Stats = m_ForwardRenderer.GetStats();
+        ImGui::Text("Opaque items: %u", Stats.OpaqueItemCount);
+        ImGui::Text("Terrain tris: %u", Stats.TerrainTriangleCount);
         ImGui::Text("Debug items: %u", Stats.DebugItemCount);
         ImGui::Text("PSOs: %zu", Stats.PSOCount);
         ImGui::Text("PSO creations: %zu", Stats.PSOCreationCount);

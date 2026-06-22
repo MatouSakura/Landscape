@@ -3,6 +3,7 @@
 #include "ForwardDebugPipeline.hpp"
 #include "PSOCache.hpp"
 #include "RenderQueue.hpp"
+#include "TerrainPatchRenderer.hpp"
 
 namespace Diligent
 {
@@ -15,8 +16,10 @@ struct RenderView;
 
 struct ForwardRendererStats final
 {
-    Uint32 DebugItemCount  = 0;
-    size_t PSOCount        = 0;
+    Uint32 OpaqueItemCount    = 0;
+    Uint32 TerrainTriangleCount = 0;
+    Uint32 DebugItemCount     = 0;
+    size_t PSOCount           = 0;
     size_t PSOCreationCount = 0;
 };
 
@@ -29,10 +32,11 @@ public:
     const ForwardRendererStats& GetStats() const { return m_Stats; }
 
 private:
-    ForwardDebugPipeline m_ForwardDebugPipeline;
-    RenderQueue          m_RenderQueue;
-    PSOCache             m_PSOCache;
-    ForwardRendererStats m_Stats;
+    ForwardDebugPipeline  m_ForwardDebugPipeline;
+    TerrainPatchRenderer  m_TerrainPatchRenderer;
+    RenderQueue           m_RenderQueue;
+    PSOCache              m_PSOCache;
+    ForwardRendererStats  m_Stats;
 };
 
 } // namespace Diligent
