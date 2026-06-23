@@ -901,6 +901,13 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     m_TerrainExtent = m_HeightField.GetExtent();
     m_SkirtDepth    = SkirtDepth;
 
+    TerrainHeightmapTileSetDesc TileSetDesc;
+    TileSetDesc.TileCountX             = m_Desc.HeightmapTileCountX;
+    TileSetDesc.TileCountZ             = m_Desc.HeightmapTileCountZ;
+    TileSetDesc.TileSampleCountPerAxis = m_HeightField.GetSampleCountPerAxis();
+    TileSetDesc.Extent                 = m_TerrainExtent;
+    m_HeightmapTileSet.Build(TileSetDesc);
+
     BuildPackedTileMeshCache(pDevice, QuadtreeNodes);
 
     m_pTerrainPSO = PSOCache.GetOrCreate("ForwardOpaque.TerrainPatch.Heightfield.v1", [&]() {

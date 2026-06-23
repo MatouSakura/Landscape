@@ -51,6 +51,8 @@ private:
     std::string          m_TerrainHeightmapRawR16Path;
     Uint32               m_TerrainHeightmapSampleCountPerAxis = 65;
     float                m_TerrainHeightmapHeightScale = 2.5f;
+    Uint32               m_TerrainHeightmapTileCountX = 1;
+    Uint32               m_TerrainHeightmapTileCountZ = 1;
     LandscapeCameraPreset m_CameraPreset = LandscapeCameraPreset::Default;
 };
 

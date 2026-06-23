@@ -43,6 +43,8 @@ LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc,
     ArgsParser.Parse("landscape_heightmap_raw_r16", m_TerrainHeightmapRawR16Path);
     ArgsParser.Parse("landscape_heightmap_samples", m_TerrainHeightmapSampleCountPerAxis);
     ArgsParser.Parse("landscape_heightmap_height_scale", m_TerrainHeightmapHeightScale);
+    ArgsParser.Parse("landscape_heightmap_tiles_x", m_TerrainHeightmapTileCountX);
+    ArgsParser.Parse("landscape_heightmap_tiles_z", m_TerrainHeightmapTileCountZ);
 
     if (!m_TerrainHeightmapRawR16Path.empty() && m_TerrainHeightmapSampleCountPerAxis < 2u)
     {
@@ -52,6 +54,11 @@ LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc,
     if (m_TerrainHeightmapHeightScale <= 0.0f)
     {
         LOG_ERROR_MESSAGE("Invalid landscape_heightmap_height_scale value. Expected a positive value.");
+        return CommandLineStatus::Error;
+    }
+    if (m_TerrainHeightmapTileCountX == 0u || m_TerrainHeightmapTileCountZ == 0u)
+    {
+        LOG_ERROR_MESSAGE("Invalid landscape heightmap tile grid. Expected both landscape_heightmap_tiles_x and landscape_heightmap_tiles_z to be at least 1.");
         return CommandLineStatus::Error;
     }
 
@@ -66,6 +73,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
 
     m_FrameResources.Initialize(m_pDevice);
     m_ForwardRenderer.SetTerrainHeightmapRawR16(m_TerrainHeightmapRawR16Path, m_TerrainHeightmapSampleCountPerAxis, m_TerrainHeightmapHeightScale);
+    m_ForwardRenderer.SetTerrainHeightmapTileGrid(m_TerrainHeightmapTileCountX, m_TerrainHeightmapTileCountZ);
     m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
     m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
     m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
@@ -124,6 +132,10 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
         ImGui::Text("Height source: %s", Stats.TerrainHeightSourceName);
         ImGui::Text("Heightmap loaded: %s", Stats.TerrainHeightmapLoaded ? "yes" : "no");
+        ImGui::Text("Heightmap package: %s %u x %u", Stats.TerrainHeightmapLayoutName, Stats.TerrainHeightmapTileCountX, Stats.TerrainHeightmapTileCountZ);
+        ImGui::Text("Heightmap tile samples: %u, cells: %u", Stats.TerrainHeightmapTileSampleCountPerAxis, Stats.TerrainHeightmapTileCellCount);
+        ImGui::Text("Heightmap package cells: %u x %u", Stats.TerrainHeightmapPackageCellCountX, Stats.TerrainHeightmapPackageCellCountZ);
+        ImGui::Text("Heightmap tile world size: %.2f x %.2f", Stats.TerrainHeightmapTileWorldSizeX, Stats.TerrainHeightmapTileWorldSizeZ);
         ImGui::Text("Height range: %.2f .. %.2f", Stats.TerrainMinHeight, Stats.TerrainMaxHeight);
         ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);
         if (ImGui::Checkbox("Show quadtree overlay", &m_ShowQuadtreeOverlay))

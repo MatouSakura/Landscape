@@ -99,6 +99,20 @@ void UpdateTerrainLODIndexStitchingStats(const TerrainLODIndexStitching& Stitchi
     Stats.TerrainLODIndexStitchingMaxRatio = StitchingStats.MaxStitchRatio;
 }
 
+void UpdateTerrainHeightmapTileStats(const TerrainPatchRenderer& TerrainPatchRenderer, ForwardRendererStats& Stats)
+{
+    Stats.TerrainHeightmapLayoutName = TerrainPatchRenderer.GetHeightmapLayoutName();
+    Stats.TerrainHeightmapTileCountX = TerrainPatchRenderer.GetHeightmapTileCountX();
+    Stats.TerrainHeightmapTileCountZ = TerrainPatchRenderer.GetHeightmapTileCountZ();
+    Stats.TerrainHeightmapTileCount = TerrainPatchRenderer.GetHeightmapTileCount();
+    Stats.TerrainHeightmapTileSampleCountPerAxis = TerrainPatchRenderer.GetHeightmapTileSampleCountPerAxis();
+    Stats.TerrainHeightmapTileCellCount = TerrainPatchRenderer.GetHeightmapTileCellCount();
+    Stats.TerrainHeightmapPackageCellCountX = TerrainPatchRenderer.GetHeightmapPackageCellCountX();
+    Stats.TerrainHeightmapPackageCellCountZ = TerrainPatchRenderer.GetHeightmapPackageCellCountZ();
+    Stats.TerrainHeightmapTileWorldSizeX = TerrainPatchRenderer.GetHeightmapTileWorldSizeX();
+    Stats.TerrainHeightmapTileWorldSizeZ = TerrainPatchRenderer.GetHeightmapTileWorldSizeZ();
+}
+
 void ApplyLODIndexStitching(TerrainDrawRegion& Region, const TerrainLODIndexStitching& Stitching)
 {
     const TerrainLODStitchedDrawRegion* StitchedRegion = Stitching.FindRegion(Region.NodeIndex);
@@ -132,6 +146,12 @@ void ForwardRenderer::SetTerrainHeightmapRawR16(const std::string& Path, Uint32 
     m_TerrainPatchRendererDesc.HeightmapRawR16Path = Path;
     m_TerrainPatchRendererDesc.HeightmapSampleCountPerAxis = SampleCountPerAxis;
     m_TerrainPatchRendererDesc.HeightField.HeightScale = HeightScale;
+}
+
+void ForwardRenderer::SetTerrainHeightmapTileGrid(Uint32 TileCountX, Uint32 TileCountZ)
+{
+    m_TerrainPatchRendererDesc.HeightmapTileCountX = std::max(TileCountX, 1u);
+    m_TerrainPatchRendererDesc.HeightmapTileCountZ = std::max(TileCountZ, 1u);
 }
 
 void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
@@ -170,6 +190,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
     m_Stats.TerrainHeightmapLoaded = m_TerrainPatchRenderer.IsHeightmapLoaded();
     m_Stats.TerrainHeightSourceName = m_TerrainPatchRenderer.GetHeightSourceName();
+    UpdateTerrainHeightmapTileStats(m_TerrainPatchRenderer, m_Stats);
     m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
     m_Stats.TerrainFrustumCullingEnabled = m_EnableTerrainFrustumCulling;
@@ -295,6 +316,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
     m_Stats.TerrainHeightmapLoaded = m_TerrainPatchRenderer.IsHeightmapLoaded();
     m_Stats.TerrainHeightSourceName = m_TerrainPatchRenderer.GetHeightSourceName();
+    UpdateTerrainHeightmapTileStats(m_TerrainPatchRenderer, m_Stats);
     m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
     m_Stats.TerrainFrustumCullingEnabled = m_EnableTerrainFrustumCulling;

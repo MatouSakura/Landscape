@@ -49,6 +49,16 @@ struct ForwardRendererStats final
     float  TerrainAverageHeight = 0.0f;
     bool   TerrainHeightmapLoaded = false;
     const char* TerrainHeightSourceName = "procedural";
+    const char* TerrainHeightmapLayoutName = "single_patch";
+    Uint32 TerrainHeightmapTileCountX = 1;
+    Uint32 TerrainHeightmapTileCountZ = 1;
+    Uint32 TerrainHeightmapTileCount = 1;
+    Uint32 TerrainHeightmapTileSampleCountPerAxis = 65;
+    Uint32 TerrainHeightmapTileCellCount = 64;
+    Uint32 TerrainHeightmapPackageCellCountX = 64;
+    Uint32 TerrainHeightmapPackageCellCountZ = 64;
+    float  TerrainHeightmapTileWorldSizeX = 40.0f;
+    float  TerrainHeightmapTileWorldSizeZ = 40.0f;
     Uint32 ShadowCascadeCount = 0;
     Uint32 ShadowMapSize      = 0;
     Uint32 SkyPassCount       = 0;
@@ -112,6 +122,7 @@ public:
     void SetTerrainLODIndexStitchingEnabled(bool Enable) { m_EnableTerrainLODIndexStitching = Enable; }
     bool GetTerrainLODIndexStitchingEnabled() const { return m_EnableTerrainLODIndexStitching; }
     void SetTerrainHeightmapRawR16(const std::string& Path, Uint32 SampleCountPerAxis, float HeightScale);
+    void SetTerrainHeightmapTileGrid(Uint32 TileCountX, Uint32 TileCountZ);
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;

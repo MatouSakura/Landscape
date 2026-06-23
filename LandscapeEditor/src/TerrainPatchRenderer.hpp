@@ -5,6 +5,7 @@
 #include "RefCntAutoPtr.hpp"
 #include "RenderQueue.hpp"
 #include "TerrainHeightField.hpp"
+#include "TerrainHeightmapTileSet.hpp"
 #include "TerrainLODIndexStitching.hpp"
 #include "TerrainQuadtree.hpp"
 
@@ -34,6 +35,8 @@ struct TerrainPatchRendererDesc final
     TerrainHeightFieldDesc HeightField;
     std::string            HeightmapRawR16Path;
     Uint32                 HeightmapSampleCountPerAxis = 65;
+    Uint32                 HeightmapTileCountX = 1;
+    Uint32                 HeightmapTileCountZ = 1;
 };
 
 class TerrainPatchRenderer final
@@ -69,6 +72,16 @@ public:
     float  GetAverageHeight() const { return m_HeightField.GetStats().AverageHeight; }
     const char* GetHeightSourceName() const { return m_HeightField.GetSourceName(); }
     bool IsHeightmapLoaded() const { return m_HeightField.IsHeightmapLoaded(); }
+    const char* GetHeightmapLayoutName() const { return m_HeightmapTileSet.GetLayoutName(); }
+    Uint32 GetHeightmapTileCountX() const { return m_HeightmapTileSet.GetStats().TileCountX; }
+    Uint32 GetHeightmapTileCountZ() const { return m_HeightmapTileSet.GetStats().TileCountZ; }
+    Uint32 GetHeightmapTileCount() const { return m_HeightmapTileSet.GetStats().TileCount; }
+    Uint32 GetHeightmapTileSampleCountPerAxis() const { return m_HeightmapTileSet.GetStats().TileSampleCountPerAxis; }
+    Uint32 GetHeightmapTileCellCount() const { return m_HeightmapTileSet.GetStats().TileCellCount; }
+    Uint32 GetHeightmapPackageCellCountX() const { return m_HeightmapTileSet.GetStats().TotalCellCountX; }
+    Uint32 GetHeightmapPackageCellCountZ() const { return m_HeightmapTileSet.GetStats().TotalCellCountZ; }
+    float  GetHeightmapTileWorldSizeX() const { return m_HeightmapTileSet.GetStats().TileWorldSizeX; }
+    float  GetHeightmapTileWorldSizeZ() const { return m_HeightmapTileSet.GetStats().TileWorldSizeZ; }
 
 private:
     void BuildPackedTileMeshCache(IRenderDevice* pDevice, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes);
@@ -76,6 +89,7 @@ private:
 
 private:
     TerrainHeightField                    m_HeightField;
+    TerrainHeightmapTileSet               m_HeightmapTileSet;
     TerrainPatchRendererDesc              m_Desc;
     std::vector<TerrainTileMeshRange>      m_TileMeshRanges;
     RefCntAutoPtr<IBuffer>                m_pVertexBuffer;

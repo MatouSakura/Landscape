@@ -94,6 +94,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-lod-index-stitching-corner-hardening.md`
 - Added the external heightmap RAW R16 implementation record:
   `docs/superpowers/plans/2026-06-23-external-heightmap-raw-r16.md`
+- Added the heightmap tile metadata implementation record:
+  `docs/superpowers/plans/2026-06-23-heightmap-tile-metadata.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -160,6 +162,9 @@ Current implementation:
 - Loads an optional square little-endian external heightmap RAW R16 file through `--landscape_heightmap_raw_r16`.
 - Supports `--landscape_heightmap_samples` and `--landscape_heightmap_height_scale` for the first fixed-patch heightmap import path.
 - Shows terrain height source and loaded state in ImGui, and falls back to procedural heightfield generation if the RAW R16 file is invalid.
+- Builds a heightmap tile metadata package over the current heightfield with stable tile indices, future combined-heightmap sample origins, world bounds, and `single_patch` / `tiled_grid` layout naming.
+- Parses `--landscape_heightmap_tiles_x` and `--landscape_heightmap_tiles_z` so the editor can validate metadata for future multi-component terrain packages without changing the current single-patch draw path.
+- Shows heightmap package layout, tile grid, per-tile samples/cells, package cell dimensions, and tile world size in ImGui.
 - Builds a complete CPU quadtree over the current terrain extent with stable node indices and contiguous direct child nodes.
 - Selects quadtree LOD leaves every frame from camera XZ distance.
 - Draws selected quadtree leaves through a debug line overlay with backend-specific GLSL for OpenGL.
@@ -195,7 +200,7 @@ Current implementation:
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
-- Keeps PNG/R32F heightmap loading, tiled heightmap packages, streaming, full cascade selection/stabilization, GPU culling, indirect draw, and production terrain materials deferred until the terrain data model is expanded.
+- Keeps PNG/R32F heightmap loading, multi-file tiled heightmap loading, streaming, full cascade selection/stabilization, GPU culling, indirect draw, and production terrain materials deferred until the terrain data model is expanded.
 
 Validation completed on 2026-06-22:
 
@@ -569,6 +574,44 @@ External heightmap RAW R16 validation completed on 2026-06-23:
   - RAW-vs-procedural changed pixels: D3D12 `114294`, Vulkan `114294`, D3D11 `114294`, OpenGL `108922`.
 - Implementation note: RAW R16 loading is a CPU-side data-layer path. It reuses the existing height stats, normal generation, packed tile mesh cache, quadtree LOD, skirts, stitching, shadow, and forward rendering paths.
 
+Heightmap tile metadata validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+  - `tools\verify_landscape_selected_leaf_render_items.py`
+  - `tools\verify_landscape_packed_tile_mesh_cache.py`
+  - `tools\verify_landscape_tile_skirts.py`
+  - `tools\verify_landscape_lod_tile_sampling.py`
+  - `tools\verify_landscape_lod_transition_diagnostics.py`
+  - `tools\verify_landscape_frustum_culling.py`
+  - `tools\verify_landscape_scripted_camera_smoke.py`
+  - `tools\verify_landscape_component_lod_policy.py`
+  - `tools\verify_landscape_lod_stitching.py`
+  - `tools\verify_landscape_lod_index_stitching.py`
+  - `tools\verify_landscape_lod_index_stitching_corners.py`
+  - `tools\verify_landscape_external_heightmap.py`
+  - `tools\verify_landscape_heightmap_tile_metadata.py`
+- Default metadata smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-heightmap-tile-metadata-default-d3d12\landscape_heightmap_tile_metadata_default_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-heightmap-tile-metadata-default-vk\landscape_heightmap_tile_metadata_default_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-heightmap-tile-metadata-default-d3d11\landscape_heightmap_tile_metadata_default_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-heightmap-tile-metadata-default-gl\landscape_heightmap_tile_metadata_default_gl.png`
+- Metadata grid smoke captures:
+  - D3D12 `2 x 2`: `build\Win64-vs18\smoke-heightmap-tile-metadata-grid-d3d12\landscape_heightmap_tile_metadata_grid_d3d12.png`
+  - D3D12 RAW R16 `2 x 2`: `build\Win64-vs18\smoke-heightmap-tile-metadata-raw-grid-d3d12\landscape_heightmap_tile_metadata_raw_grid_d3d12.png`
+- Pixel check:
+  - Default D3D12/Vulkan/D3D11: `640x480`, `non_dark=307200`, `ground_like=306560`, `grid_like=239876`, `std_sum=38.56`.
+  - Default OpenGL: `640x480`, `non_dark=307200`, `ground_like=306560`, `grid_like=303782`, `std_sum=48.52`.
+  - D3D12 `2 x 2` metadata: unchanged from default geometry with `grid_metadata_vs_default_changed_pixels=0`.
+  - D3D12 RAW R16 `2 x 2`: `640x480`, `non_dark=307200`, `ground_like=306560`, `grid_like=264256`, `std_sum=33.05`, `raw_vs_default_changed_pixels=223837`.
+- Implementation note: this is a metadata/control-layer step. Tile counts do not yet render multiple heightmap files or multiple root terrain components.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -664,7 +707,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add basic CPU normal calculation.
 - Done: Add simple height/slope terrain material variation.
 - Done: Add external heightmap RAW R16 loading for one fixed terrain patch.
-- Later: Add PNG/R32F loading and tiled heightmap package support.
+- Done: Add heightmap tile metadata for future multi-component terrain packages.
+- Later: Add PNG/R32F loading and multi-file tiled heightmap loading.
 
 ### Phase 3: Quadtree LOD
 
@@ -878,8 +922,8 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add shader morph comparison captures for LOD transitions, or start PNG/R32F heightmap loading.
-2. Start defining tiled heightmap package metadata so the RAW R16 path can become multiple terrain components.
+1. Add multi-file tiled RAW/R32F heightmap loading on top of the new tile metadata package.
+2. Add shader morph comparison captures for LOD transitions.
 3. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
 ## Notes
