@@ -92,6 +92,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-lod-index-stitching-v1.md`
 - Added the LOD index stitching corner hardening implementation record:
   `docs/superpowers/plans/2026-06-23-lod-index-stitching-corner-hardening.md`
+- Added the external heightmap RAW R16 implementation record:
+  `docs/superpowers/plans/2026-06-23-external-heightmap-raw-r16.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -155,6 +157,9 @@ Current implementation:
 - Uses shader tone mapping/gamma on D3D12, Vulkan, D3D11, and OpenGL.
 - Uses backend-specific shader source for postprocess: HLSL for D3D12/Vulkan/D3D11 and GLSL for OpenGL.
 - Renders a deterministic procedural heightfield terrain patch with CPU-generated normals, UVs, and height statistics.
+- Loads an optional square little-endian external heightmap RAW R16 file through `--landscape_heightmap_raw_r16`.
+- Supports `--landscape_heightmap_samples` and `--landscape_heightmap_height_scale` for the first fixed-patch heightmap import path.
+- Shows terrain height source and loaded state in ImGui, and falls back to procedural heightfield generation if the RAW R16 file is invalid.
 - Builds a complete CPU quadtree over the current terrain extent with stable node indices and contiguous direct child nodes.
 - Selects quadtree LOD leaves every frame from camera XZ distance.
 - Draws selected quadtree leaves through a debug line overlay with backend-specific GLSL for OpenGL.
@@ -190,7 +195,7 @@ Current implementation:
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
-- Keeps external heightmap loading, full cascade selection/stabilization, GPU culling, indirect draw, and production terrain materials deferred until the terrain data model is expanded.
+- Keeps PNG/R32F heightmap loading, tiled heightmap packages, streaming, full cascade selection/stabilization, GPU culling, indirect draw, and production terrain materials deferred until the terrain data model is expanded.
 
 Validation completed on 2026-06-22:
 
@@ -538,6 +543,32 @@ LOD index stitching corner hardening validation completed on 2026-06-23:
   - D3D12 `mixed_lod`: `640x480`, `non_dark=307200`, `ground_like=64310`, `grid_like=240730`, `cyan_like=1268`, `orange_like=455`, `std_sum=32.12`.
 - Implementation note: corner-hardening removes duplicate edge-band corner coverage by clipping stitched edge bands and adding one corner patch per stitched corner. Shader morph comparison remains a later option.
 
+External heightmap RAW R16 validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_external_heightmap.py`
+- Generated validation asset:
+  - `build\Win64-vs18\test-heightmaps\ridge_65x65.r16`
+  - Size: `8450` bytes (`65 * 65 * 2`).
+- Default procedural smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-external-heightmap-default-d3d12\landscape_external_heightmap_default_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-external-heightmap-default-vk\landscape_external_heightmap_default_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-external-heightmap-default-d3d11\landscape_external_heightmap_default_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-external-heightmap-default-gl\landscape_external_heightmap_default_gl.png`
+- RAW R16 smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-external-heightmap-raw-d3d12\landscape_external_heightmap_raw_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-external-heightmap-raw-vk\landscape_external_heightmap_raw_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-external-heightmap-raw-d3d11\landscape_external_heightmap_raw_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-external-heightmap-raw-gl\landscape_external_heightmap_raw_gl.png`
+- Pixel check:
+  - Default D3D12/Vulkan/D3D11: `640x480`, `non_dark=307200`, `ground_like=237188`, `grid_like=252784`, `std_sum=38.56`.
+  - Default OpenGL: `640x480`, `non_dark=307200`, `ground_like=304175`, `grid_like=293451`, `std_sum=48.52`.
+  - RAW D3D12/Vulkan/D3D11: `640x480`, `non_dark=307200`, `ground_like=265860`, `grid_like=272432`, `std_sum=33.05`.
+  - RAW OpenGL: `640x480`, `non_dark=307200`, `ground_like=304175`, `grid_like=303782`, `std_sum=45.32`.
+  - RAW-vs-procedural changed pixels: D3D12 `114294`, Vulkan `114294`, D3D11 `114294`, OpenGL `108922`.
+- Implementation note: RAW R16 loading is a CPU-side data-layer path. It reuses the existing height stats, normal generation, packed tile mesh cache, quadtree LOD, skirts, stitching, shadow, and forward rendering paths.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -632,8 +663,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Render a fixed-size heightfield terrain patch.
 - Done: Add basic CPU normal calculation.
 - Done: Add simple height/slope terrain material variation.
-- Next: Add external heightmap loading for one fixed terrain patch.
-- Next: Start CPU quadtree node model and LOD selection.
+- Done: Add external heightmap RAW R16 loading for one fixed terrain patch.
+- Later: Add PNG/R32F loading and tiled heightmap package support.
 
 ### Phase 3: Quadtree LOD
 
@@ -847,8 +878,8 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add shader morph comparison captures for LOD transitions, or start external heightmap loading for one fixed terrain patch.
-2. Keep validating stitched-index LOD transitions while moving the camera.
+1. Add shader morph comparison captures for LOD transitions, or start PNG/R32F heightmap loading.
+2. Start defining tiled heightmap package metadata so the RAW R16 path can become multiple terrain components.
 3. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
 ## Notes

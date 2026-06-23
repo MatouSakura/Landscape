@@ -8,6 +8,7 @@
 #include "TerrainLODIndexStitching.hpp"
 #include "TerrainQuadtree.hpp"
 
+#include <string>
 #include <vector>
 
 namespace Diligent
@@ -28,10 +29,17 @@ struct TerrainTileMeshRange final
     Uint32            VertexCount = 0;
 };
 
+struct TerrainPatchRendererDesc final
+{
+    TerrainHeightFieldDesc HeightField;
+    std::string            HeightmapRawR16Path;
+    Uint32                 HeightmapSampleCountPerAxis = 65;
+};
+
 class TerrainPatchRenderer final
 {
 public:
-    void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes);
+    void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes, const TerrainPatchRendererDesc& Desc = {});
     TerrainDrawRegion BuildDrawRegion(const TerrainQuadtreeNode& Node) const;
     void BeginFrameStats();
     void SetEnableSkirts(bool Enable) { m_EnableSkirts = Enable; }
@@ -59,6 +67,8 @@ public:
     float  GetMinHeight() const { return m_HeightField.GetStats().MinHeight; }
     float  GetMaxHeight() const { return m_HeightField.GetStats().MaxHeight; }
     float  GetAverageHeight() const { return m_HeightField.GetStats().AverageHeight; }
+    const char* GetHeightSourceName() const { return m_HeightField.GetSourceName(); }
+    bool IsHeightmapLoaded() const { return m_HeightField.IsHeightmapLoaded(); }
 
 private:
     void BuildPackedTileMeshCache(IRenderDevice* pDevice, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes);
@@ -66,6 +76,7 @@ private:
 
 private:
     TerrainHeightField                    m_HeightField;
+    TerrainPatchRendererDesc              m_Desc;
     std::vector<TerrainTileMeshRange>      m_TileMeshRanges;
     RefCntAutoPtr<IBuffer>                m_pVertexBuffer;
     RefCntAutoPtr<IBuffer>                m_pIndexBuffer;

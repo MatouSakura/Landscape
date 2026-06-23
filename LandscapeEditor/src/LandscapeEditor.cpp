@@ -19,24 +19,39 @@ LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc,
     CommandLineParser ArgsParser{argc, argv};
 
     std::string Preset;
-    if (!ArgsParser.Parse("landscape_camera_preset", Preset))
-        return CommandLineStatus::OK;
+    if (ArgsParser.Parse("landscape_camera_preset", Preset))
+    {
+        if (Preset == "default")
+        {
+            m_CameraPreset = LandscapeCameraPreset::Default;
+        }
+        else if (Preset == "mixed_lod")
+        {
+            m_CameraPreset = LandscapeCameraPreset::MixedLOD;
+        }
+        else if (Preset == "off_frustum")
+        {
+            m_CameraPreset = LandscapeCameraPreset::OffFrustum;
+        }
+        else
+        {
+            LOG_ERROR_MESSAGE("Invalid landscape_camera_preset '", Preset, "'. Expected one of: default, mixed_lod, off_frustum.");
+            return CommandLineStatus::Error;
+        }
+    }
 
-    if (Preset == "default")
+    ArgsParser.Parse("landscape_heightmap_raw_r16", m_TerrainHeightmapRawR16Path);
+    ArgsParser.Parse("landscape_heightmap_samples", m_TerrainHeightmapSampleCountPerAxis);
+    ArgsParser.Parse("landscape_heightmap_height_scale", m_TerrainHeightmapHeightScale);
+
+    if (!m_TerrainHeightmapRawR16Path.empty() && m_TerrainHeightmapSampleCountPerAxis < 2u)
     {
-        m_CameraPreset = LandscapeCameraPreset::Default;
+        LOG_ERROR_MESSAGE("Invalid landscape_heightmap_samples value. Expected at least 2.");
+        return CommandLineStatus::Error;
     }
-    else if (Preset == "mixed_lod")
+    if (m_TerrainHeightmapHeightScale <= 0.0f)
     {
-        m_CameraPreset = LandscapeCameraPreset::MixedLOD;
-    }
-    else if (Preset == "off_frustum")
-    {
-        m_CameraPreset = LandscapeCameraPreset::OffFrustum;
-    }
-    else
-    {
-        LOG_ERROR_MESSAGE("Invalid landscape_camera_preset '", Preset, "'. Expected one of: default, mixed_lod, off_frustum.");
+        LOG_ERROR_MESSAGE("Invalid landscape_heightmap_height_scale value. Expected a positive value.");
         return CommandLineStatus::Error;
     }
 
@@ -50,6 +65,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     ApplyCameraPreset();
 
     m_FrameResources.Initialize(m_pDevice);
+    m_ForwardRenderer.SetTerrainHeightmapRawR16(m_TerrainHeightmapRawR16Path, m_TerrainHeightmapSampleCountPerAxis, m_TerrainHeightmapHeightScale);
     m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
     m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
     m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
@@ -106,6 +122,8 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Skirt vertices: %u", Stats.TerrainSkirtVertexCount);
         ImGui::Text("Skirt indices: %u", Stats.TerrainSkirtIndexCount);
         ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
+        ImGui::Text("Height source: %s", Stats.TerrainHeightSourceName);
+        ImGui::Text("Heightmap loaded: %s", Stats.TerrainHeightmapLoaded ? "yes" : "no");
         ImGui::Text("Height range: %.2f .. %.2f", Stats.TerrainMinHeight, Stats.TerrainMaxHeight);
         ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);
         if (ImGui::Checkbox("Show quadtree overlay", &m_ShowQuadtreeOverlay))

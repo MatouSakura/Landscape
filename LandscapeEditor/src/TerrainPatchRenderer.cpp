@@ -882,11 +882,23 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
     m_StitchedIndexBufferCapacity = std::max<Uint32>(m_PackedTileIndexCount, 1u);
 }
 
-void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes)
+void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes, const TerrainPatchRendererDesc& Desc)
 {
-    TerrainHeightFieldDesc HeightFieldDesc;
-    m_HeightField.GenerateProcedural(HeightFieldDesc);
-    m_TerrainExtent = HeightFieldDesc.Extent;
+    m_Desc = Desc;
+    if (m_Desc.HeightmapRawR16Path.empty())
+    {
+        m_HeightField.GenerateProcedural(m_Desc.HeightField);
+    }
+    else
+    {
+        std::string ErrorMessage;
+        if (!m_HeightField.LoadRawR16(m_Desc.HeightField, m_Desc.HeightmapRawR16Path, m_Desc.HeightmapSampleCountPerAxis, &ErrorMessage))
+        {
+            LOG_ERROR_MESSAGE("Failed to load RAW R16 terrain heightmap '", m_Desc.HeightmapRawR16Path.c_str(), "': ", ErrorMessage.c_str(), ". Falling back to procedural heightfield.");
+            m_HeightField.GenerateProcedural(m_Desc.HeightField);
+        }
+    }
+    m_TerrainExtent = m_HeightField.GetExtent();
     m_SkirtDepth    = SkirtDepth;
 
     BuildPackedTileMeshCache(pDevice, QuadtreeNodes);

@@ -127,6 +127,13 @@ void ForwardRenderer::SetTerrainMaxSelectedLODLevel(Uint32 Level)
     m_TerrainQuadtree.SetLODPolicy(Policy);
 }
 
+void ForwardRenderer::SetTerrainHeightmapRawR16(const std::string& Path, Uint32 SampleCountPerAxis, float HeightScale)
+{
+    m_TerrainPatchRendererDesc.HeightmapRawR16Path = Path;
+    m_TerrainPatchRendererDesc.HeightmapSampleCountPerAxis = SampleCountPerAxis;
+    m_TerrainPatchRendererDesc.HeightField.HeightScale = HeightScale;
+}
+
 void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 {
     m_pSwapChain = pSwapChain;
@@ -135,7 +142,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_SkyRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     TerrainQuadtreeDesc QuadtreeDesc;
     m_TerrainQuadtree.Build(QuadtreeDesc);
-    m_TerrainPatchRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetNodes());
+    m_TerrainPatchRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetNodes(), m_TerrainPatchRendererDesc);
     m_TerrainQuadtreeDebugRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetSelectedLeafCapacity() * 32u);
     m_TransparentRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_ForwardDebugPipeline.Initialize(pDevice, pSwapChain, m_PSOCache);
@@ -161,6 +168,8 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
     m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
+    m_Stats.TerrainHeightmapLoaded = m_TerrainPatchRenderer.IsHeightmapLoaded();
+    m_Stats.TerrainHeightSourceName = m_TerrainPatchRenderer.GetHeightSourceName();
     m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
     m_Stats.TerrainFrustumCullingEnabled = m_EnableTerrainFrustumCulling;
@@ -284,6 +293,8 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
     m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
+    m_Stats.TerrainHeightmapLoaded = m_TerrainPatchRenderer.IsHeightmapLoaded();
+    m_Stats.TerrainHeightSourceName = m_TerrainPatchRenderer.GetHeightSourceName();
     m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
     m_Stats.TerrainFrustumCullingEnabled = m_EnableTerrainFrustumCulling;

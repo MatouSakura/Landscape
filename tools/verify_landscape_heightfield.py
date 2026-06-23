@@ -95,7 +95,7 @@ def main() -> int:
         ("sky_glsl_language", lambda: require_contains(f("sky_cpp"), r"SHADER_SOURCE_LANGUAGE_GLSL", "OpenGL GLSL sky shader path")),
         ("sky_glsl_far_depth", lambda: require_contains(f("sky_cpp"), r"gl_Position\s*=\s*vec4\s*\(\s*pos\s*,\s*1\.0\s*,\s*1\.0\s*\)", "OpenGL GLSL sky far-depth output")),
         ("status_heightfield_done", lambda: require_contains(f("status"), r"heightfield terrain patch", "heightfield status record")),
-        ("status_quadtree_next", lambda: require_contains(f("status"), r"CPU quadtree node.*LOD selection", "quadtree next action")),
+        ("status_quadtree_record", lambda: require_contains(f("status"), r"CPU quadtree node.*LOD selection|CPU quadtree LOD selection validation completed|Split terrain into CPU quadtree nodes", "quadtree status record")),
         ("plan_exists", lambda: f("plan")),
         ("no_pso_creation_in_render", lambda: require_no_pso_creation_in_render([
             "LandscapeEditor/src/ForwardRenderer.cpp",

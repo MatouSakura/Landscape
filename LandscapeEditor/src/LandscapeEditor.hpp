@@ -6,6 +6,8 @@
 #include "RenderView.hpp"
 #include "SampleBase.hpp"
 
+#include <string>
+
 namespace Diligent
 {
 
@@ -46,6 +48,9 @@ private:
     bool                 m_EnableTerrainLODIndexStitching = true;
     float                m_TerrainLODDistanceScale = 2.2f;
     int                  m_TerrainMaxSelectedLODLevel = 4;
+    std::string          m_TerrainHeightmapRawR16Path;
+    Uint32               m_TerrainHeightmapSampleCountPerAxis = 65;
+    float                m_TerrainHeightmapHeightScale = 2.5f;
     LandscapeCameraPreset m_CameraPreset = LandscapeCameraPreset::Default;
 };
 

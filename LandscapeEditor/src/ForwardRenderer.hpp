@@ -13,6 +13,8 @@
 #include "TerrainQuadtreeDebugRenderer.hpp"
 #include "TransparentRenderer.hpp"
 
+#include <string>
+
 namespace Diligent
 {
 
@@ -45,6 +47,8 @@ struct ForwardRendererStats final
     float  TerrainMinHeight   = 0.0f;
     float  TerrainMaxHeight   = 0.0f;
     float  TerrainAverageHeight = 0.0f;
+    bool   TerrainHeightmapLoaded = false;
+    const char* TerrainHeightSourceName = "procedural";
     Uint32 ShadowCascadeCount = 0;
     Uint32 ShadowMapSize      = 0;
     Uint32 SkyPassCount       = 0;
@@ -107,6 +111,7 @@ public:
     Uint32 GetTerrainMaxSelectedLODLevel() const { return m_TerrainQuadtree.GetLODPolicy().MaxSelectedLevel; }
     void SetTerrainLODIndexStitchingEnabled(bool Enable) { m_EnableTerrainLODIndexStitching = Enable; }
     bool GetTerrainLODIndexStitchingEnabled() const { return m_EnableTerrainLODIndexStitching; }
+    void SetTerrainHeightmapRawR16(const std::string& Path, Uint32 SampleCountPerAxis, float HeightScale);
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;
@@ -123,6 +128,7 @@ private:
     PostProcessRenderer   m_PostProcessRenderer;
     RenderQueue           m_RenderQueue;
     PSOCache              m_PSOCache;
+    TerrainPatchRendererDesc m_TerrainPatchRendererDesc;
     ForwardRendererStats  m_Stats;
     ISwapChain*           m_pSwapChain = nullptr;
     bool                  m_ShowQuadtreeOverlay = true;
