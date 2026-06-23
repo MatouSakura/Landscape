@@ -3,6 +3,7 @@
 #include "CommandLineParser.hpp"
 #include "imgui.h"
 
+#include <algorithm>
 #include <string>
 
 namespace Diligent
@@ -54,6 +55,8 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
     m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
     m_ForwardRenderer.SetTerrainFrustumCullingEnabled(m_EnableTerrainFrustumCulling);
+    m_ForwardRenderer.SetTerrainLODDistanceScale(m_TerrainLODDistanceScale);
+    m_ForwardRenderer.SetTerrainMaxSelectedLODLevel(static_cast<Uint32>(m_TerrainMaxSelectedLODLevel));
     UpdateRenderView();
 }
 
@@ -112,6 +115,16 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
             m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
         ImGui::Text("Quadtree nodes: %u", Stats.TerrainQuadtreeNodeCount);
         ImGui::Text("Selected leaves: %u", Stats.TerrainQuadtreeSelectedLeafCount);
+        if (ImGui::SliderFloat("LOD distance scale", &m_TerrainLODDistanceScale, 0.50f, 4.00f, "%.2f"))
+            m_ForwardRenderer.SetTerrainLODDistanceScale(m_TerrainLODDistanceScale);
+        const int MaxLODLevel = std::max(1, static_cast<int>(Stats.TerrainQuadtreeMaxDepth));
+        m_TerrainMaxSelectedLODLevel = std::clamp(m_TerrainMaxSelectedLODLevel, 1, MaxLODLevel);
+        if (ImGui::SliderInt("Max terrain LOD", &m_TerrainMaxSelectedLODLevel, 1, MaxLODLevel))
+            m_ForwardRenderer.SetTerrainMaxSelectedLODLevel(static_cast<Uint32>(m_TerrainMaxSelectedLODLevel));
+        ImGui::Text("LOD policy: scale %.2f, max level %u", Stats.TerrainLODDistanceScale, Stats.TerrainMaxSelectableLODLevel);
+        ImGui::Text("Component size: root %.2f, finest %.2f", Stats.TerrainRootComponentWorldSize, Stats.TerrainFineComponentWorldSize);
+        ImGui::Text("Selected component size: %.2f .. %.2f", Stats.TerrainSelectedMinComponentWorldSize, Stats.TerrainSelectedMaxComponentWorldSize);
+        ImGui::Text("Selected LOD range: %u .. %u", Stats.TerrainQuadtreeMinSelectedLevel, Stats.TerrainQuadtreeMaxSelectedLevel);
         if (ImGui::Checkbox("Enable terrain frustum culling", &m_EnableTerrainFrustumCulling))
             m_ForwardRenderer.SetTerrainFrustumCullingEnabled(m_EnableTerrainFrustumCulling);
         ImGui::Text("Candidate leaves: %u", Stats.TerrainQuadtreeCandidateLeafCount);

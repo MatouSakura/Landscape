@@ -55,8 +55,15 @@ struct ForwardRendererStats final
     Uint32 TerrainQuadtreeCandidateLeafCount = 0;
     Uint32 TerrainQuadtreeVisibleLeafCount = 0;
     Uint32 TerrainFrustumCulledLeafCount = 0;
+    float  TerrainLODDistanceScale = 2.2f;
+    Uint32 TerrainMaxSelectableLODLevel = 0;
+    Uint32 TerrainQuadtreeMinSelectedLevel = 0;
     Uint32 TerrainQuadtreeMaxDepth = 0;
     Uint32 TerrainQuadtreeMaxSelectedLevel = 0;
+    float  TerrainRootComponentWorldSize = 0.0f;
+    float  TerrainFineComponentWorldSize = 0.0f;
+    float  TerrainSelectedMinComponentWorldSize = 0.0f;
+    float  TerrainSelectedMaxComponentWorldSize = 0.0f;
     Uint32 TerrainDebugLeafBoundLineCount = 0;
     Uint32 TerrainDebugSkirtEdgeCount = 0;
     Uint32 TerrainDebugLODTransitionEdgeCount = 0;
@@ -81,6 +88,10 @@ public:
     bool GetTerrainSkirtsEnabled() const { return m_TerrainPatchRenderer.GetEnableSkirts(); }
     void SetTerrainFrustumCullingEnabled(bool Enable) { m_EnableTerrainFrustumCulling = Enable; }
     bool GetTerrainFrustumCullingEnabled() const { return m_EnableTerrainFrustumCulling; }
+    void SetTerrainLODDistanceScale(float Scale);
+    float GetTerrainLODDistanceScale() const { return m_TerrainQuadtree.GetLODPolicy().SplitDistanceScale; }
+    void SetTerrainMaxSelectedLODLevel(Uint32 Level);
+    Uint32 GetTerrainMaxSelectedLODLevel() const { return m_TerrainQuadtree.GetLODPolicy().MaxSelectedLevel; }
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;

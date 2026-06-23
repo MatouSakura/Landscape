@@ -29,6 +29,7 @@ void BuildVisibleTerrainSelection(const RenderView& View,
                                   TerrainQuadtreeSelection& OutVisibleSelection)
 {
     OutVisibleSelection.SelectedNodeIndices.clear();
+    OutVisibleSelection.MinSelectedLevel = 0;
     OutVisibleSelection.MaxSelectedLevel = 0;
 
     ViewFrustum Frustum;
@@ -49,12 +50,50 @@ void BuildVisibleTerrainSelection(const RenderView& View,
         if (IsVisible)
         {
             OutVisibleSelection.SelectedNodeIndices.push_back(NodeIndex);
+            OutVisibleSelection.MinSelectedLevel = OutVisibleSelection.SelectedNodeIndices.size() == 1u ? Node.Level : std::min(OutVisibleSelection.MinSelectedLevel, Node.Level);
             OutVisibleSelection.MaxSelectedLevel = std::max(OutVisibleSelection.MaxSelectedLevel, Node.Level);
         }
     }
 }
 
+void UpdateTerrainComponentLODStats(const TerrainQuadtree& Quadtree,
+                                    const TerrainQuadtreeSelection& Selection,
+                                    ForwardRendererStats& Stats)
+{
+    const TerrainComponentLODPolicy& Policy = Quadtree.GetLODPolicy();
+    Stats.TerrainLODDistanceScale = Policy.SplitDistanceScale;
+    Stats.TerrainMaxSelectableLODLevel = Quadtree.GetMaxSelectableLevel();
+    Stats.TerrainRootComponentWorldSize = Quadtree.GetComponentWorldSize(0);
+    Stats.TerrainFineComponentWorldSize = Quadtree.GetComponentWorldSize(Quadtree.GetMaxDepth());
+
+    if (Selection.SelectedNodeIndices.empty())
+    {
+        Stats.TerrainQuadtreeMinSelectedLevel = 0;
+        Stats.TerrainSelectedMinComponentWorldSize = 0.0f;
+        Stats.TerrainSelectedMaxComponentWorldSize = 0.0f;
+        return;
+    }
+
+    Stats.TerrainQuadtreeMinSelectedLevel = Selection.MinSelectedLevel;
+    Stats.TerrainSelectedMinComponentWorldSize = Quadtree.GetComponentWorldSize(Selection.MaxSelectedLevel);
+    Stats.TerrainSelectedMaxComponentWorldSize = Quadtree.GetComponentWorldSize(Selection.MinSelectedLevel);
+}
+
 } // namespace
+
+void ForwardRenderer::SetTerrainLODDistanceScale(float Scale)
+{
+    TerrainComponentLODPolicy Policy = m_TerrainQuadtree.GetLODPolicy();
+    Policy.SplitDistanceScale = Scale;
+    m_TerrainQuadtree.SetLODPolicy(Policy);
+}
+
+void ForwardRenderer::SetTerrainMaxSelectedLODLevel(Uint32 Level)
+{
+    TerrainComponentLODPolicy Policy = m_TerrainQuadtree.GetLODPolicy();
+    Policy.MaxSelectedLevel = Level;
+    m_TerrainQuadtree.SetLODPolicy(Policy);
+}
 
 void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 {
@@ -98,6 +137,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainFrustumCulledLeafCount = 0;
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
+    UpdateTerrainComponentLODStats(m_TerrainQuadtree, m_TerrainQuadtreeSelection, m_Stats);
     const auto& InitialDebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = InitialDebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = InitialDebugStats.SkirtEdgeCount;
@@ -206,6 +246,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
         0u;
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_VisibleTerrainQuadtreeSelection.MaxSelectedLevel;
+    UpdateTerrainComponentLODStats(m_TerrainQuadtree, m_VisibleTerrainQuadtreeSelection, m_Stats);
     const auto& DebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = DebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = DebugStats.SkirtEdgeCount;

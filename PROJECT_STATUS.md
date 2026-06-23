@@ -84,6 +84,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-terrain-frustum-culling.md`
 - Added the scripted camera smoke presets implementation plan:
   `docs/superpowers/plans/2026-06-23-scripted-camera-smoke.md`
+- Added the UE-style component LOD policy implementation plan:
+  `docs/superpowers/plans/2026-06-23-ue-style-component-lod-policy.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -167,6 +169,8 @@ Current implementation:
 - Tracks terrain frustum culling enabled state, candidate leaf count, visible leaf count, and culled leaf count in ImGui.
 - Adds scripted camera smoke presets through `--landscape_camera_preset default|mixed_lod|off_frustum`.
 - Shows the active scripted camera preset in the ImGui diagnostics panel.
+- Adds a UE-style component LOD policy over the quadtree so near leaves can remain fine while far leaves stay larger.
+- Exposes `LOD distance scale`, `Max terrain LOD`, selected LOD range, and selected component world-size range in ImGui.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
@@ -410,6 +414,34 @@ Scripted camera smoke presets validation completed on 2026-06-23:
 - Visual check: `mixed_lod` and `off_frustum` keep side-biased terrain/overlay views for mixed-level LOD transition and off-frustum culling regression captures.
 - Implementation note: `LandscapeEditor::ProcessCommandLine()` consumes `--landscape_camera_preset` after common `SampleApp` arguments are pruned. Presets are applied before `UpdateRenderView()`.
 
+UE-style component LOD policy validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+  - `tools\verify_landscape_selected_leaf_render_items.py`
+  - `tools\verify_landscape_packed_tile_mesh_cache.py`
+  - `tools\verify_landscape_tile_skirts.py`
+  - `tools\verify_landscape_lod_tile_sampling.py`
+  - `tools\verify_landscape_lod_transition_diagnostics.py`
+  - `tools\verify_landscape_frustum_culling.py`
+  - `tools\verify_landscape_scripted_camera_smoke.py`
+  - `tools\verify_landscape_component_lod_policy.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-component-lod-policy-d3d12\landscape_component_lod_policy_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-component-lod-policy-vk\landscape_component_lod_policy_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-component-lod-policy-d3d11\landscape_component_lod_policy_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-component-lod-policy-gl\landscape_component_lod_policy_gl.png`
+  - D3D12 `mixed_lod`: `build\Win64-vs18\smoke-component-lod-policy-mixed-d3d12\landscape_component_lod_policy_mixed_d3d12.png`
+- Pixel check: all five captures are `640x480`, have visible terrain, and include cyan diagnostic overlay pixels.
+- Visual check: D3D12 `mixed_lod` keeps side-biased terrain visible with selected component overlay lines.
+- Implementation note: `TerrainComponentLODPolicy` now owns split distance scale and max selectable LOD. The renderer exposes selected component world-size range so this quadtree leaf system can be tuned like a UE-style near/far component LOD policy.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -519,6 +551,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add LOD transition diagnostics and crack-boundary inspection.
 - Done: Add CPU frustum culling once node bounds are stable.
 - Done: Add camera/debug controls or scripted smoke positions for mixed-level LOD transition and off-frustum culling regression captures.
+- Done: Add UE-style component LOD policy controls so near selected leaves stay fine and far selected leaves can remain larger.
 - Later: Add neighbor-aware stitching or morphing after real mixed-resolution terrain tiles exist.
 
 ### Phase 4: LOD Crack Fixing
@@ -712,7 +745,7 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add neighbor-aware stitching or morphing research now that mixed-density tile sampling, transition diagnostics, and scripted smoke camera views exist.
+1. Add neighbor-aware stitching or morphing research now that mixed-density tile sampling, component LOD policy controls, transition diagnostics, and scripted smoke camera views exist.
 2. Add external heightmap loading for one fixed terrain patch.
 3. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
