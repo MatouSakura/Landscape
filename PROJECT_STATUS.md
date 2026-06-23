@@ -74,6 +74,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-selected-leaf-terrain-render-items.md`
 - Added the packed tile mesh cache implementation plan:
   `docs/superpowers/plans/2026-06-23-packed-tile-mesh-cache.md`
+- Added the terrain tile skirts implementation plan:
+  `docs/superpowers/plans/2026-06-23-terrain-tile-skirts.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -147,6 +149,8 @@ Current implementation:
 - Builds a packed tile mesh cache for every quadtree node during terrain renderer initialization.
 - Draws selected terrain leaves with one indexed draw per tile mesh using `BaseVertex`, `FirstIndexLocation`, and `NumIndices`.
 - Tracks packed tile mesh count, packed vertex count, and packed index count in ImGui.
+- Adds terrain tile skirts to each packed tile mesh as a first-pass LOD crack-hiding policy.
+- Tracks terrain skirt enabled state, skirt depth, skirt vertices, and skirt indices in ImGui.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
@@ -268,6 +272,28 @@ Packed tile mesh cache validation completed on 2026-06-23:
 - Visual check: D3D12 capture shows the heightfield terrain remains continuous after switching from row-based region drawing to packed per-node tile mesh ranges.
 - Implementation note: each quadtree node now has a prebuilt tile mesh range in the shared immutable terrain vertex and index buffers. Selected leaf render items draw those ranges with `BaseVertex`, `FirstIndexLocation`, and `NumIndices`.
 
+Terrain tile skirts validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+  - `tools\verify_landscape_selected_leaf_render_items.py`
+  - `tools\verify_landscape_packed_tile_mesh_cache.py`
+  - `tools\verify_landscape_tile_skirts.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-tile-skirts-d3d12\landscape_tile_skirts_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-tile-skirts-vk\landscape_tile_skirts_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-tile-skirts-d3d11\landscape_tile_skirts_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-tile-skirts-gl\landscape_tile_skirts_gl.png`
+- Pixel check: all four captures are `640x480`, have visible terrain/grid/transparent/sky content, and include visible quadtree overlay line pixels.
+- Visual check: D3D12 capture shows the selected packed tiles still render continuously with terrain tile skirts enabled.
+- Implementation note: skirt indices are appended after each tile's main surface indices so the renderer can draw either main-only or main-plus-skirt geometry through the `Enable terrain skirts` debug toggle.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -372,15 +398,17 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add debug overlay for selected quadtree nodes and LOD levels.
 - Done: Convert selected quadtree leaves into terrain render items.
 - Done: Add packed per-node tile mesh cache for selected leaf render items.
-- Next: Add a first-pass LOD crack policy.
+- Done: Add first-pass terrain tile skirts for selected leaf render items.
+- Next: Add LOD transition diagnostics and reduced-resolution tile sampling.
 - Next: Add frustum culling once node bounds are stable.
-- Later: Render selected leaf nodes as terrain tiles with crack handling.
+- Later: Add neighbor-aware stitching or morphing after real mixed-resolution terrain tiles exist.
 
 ### Phase 4: LOD Crack Fixing
 
-- Investigate skirt-based crack hiding.
+- Done: Add skirt-based crack hiding as the first stable implementation.
 - Investigate LOD morphing.
-- Pick one method for the first stable implementation.
+- Add mixed-resolution tile sampling so LOD transitions can be stressed for real cracks.
+- Add diagnostics for level boundaries and skirt visibility.
 - Verify transitions while moving the camera.
 
 ### Phase 5: Terrain Materials
@@ -566,9 +594,9 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add a first-pass LOD crack policy, likely skirts before morphing.
-2. Add frustum culling for quadtree node bounds.
-3. Add LOD transition diagnostics so selected leaf levels and crack boundaries can be inspected while moving the camera.
+1. Add reduced-resolution tile sampling per selected quadtree level so LOD transitions become geometrically different.
+2. Add LOD transition diagnostics so selected leaf levels, skirt boundaries, and crack-prone edges can be inspected while moving the camera.
+3. Add frustum culling for quadtree node bounds.
 4. Add external heightmap loading for one fixed terrain patch.
 5. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 

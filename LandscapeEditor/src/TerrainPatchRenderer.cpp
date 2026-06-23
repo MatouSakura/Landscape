@@ -27,6 +27,8 @@ struct TerrainVertex
     float2 UV;
 };
 
+static constexpr float SkirtDepth = 1.25f;
+
 TerrainDrawRegion BuildTerrainDrawRegion(const TerrainHeightField& HeightField, float TerrainExtent, const TerrainQuadtreeNode& Node)
 {
     const Uint32 CellCount = HeightField.GetCellCount();
@@ -56,6 +58,79 @@ TerrainDrawRegion BuildTerrainDrawRegion(const TerrainHeightField& HeightField, 
     Region.CellCountX = EndCellX - Region.FirstCellX;
     Region.CellCountZ = EndCellZ - Region.FirstCellZ;
     return Region;
+}
+
+Uint32 AppendSkirtEdge(std::vector<TerrainVertex>& Vertices,
+                       std::vector<Uint32>&        Indices,
+                       const std::vector<Uint32>&  TopIndices,
+                       const float3&               SkirtNormal,
+                       float                       SkirtDepthValue)
+{
+    const Uint32 FirstBottomVertex = static_cast<Uint32>(Vertices.size());
+    for (Uint32 TopIndex : TopIndices)
+    {
+        TerrainVertex BottomVertex = Vertices[TopIndex];
+        const float3   TopPos = BottomVertex.Pos;
+        BottomVertex.Pos.y    = TopPos.y - SkirtDepthValue;
+        BottomVertex.Normal   = SkirtNormal;
+        Vertices.push_back(BottomVertex);
+    }
+
+    for (Uint32 Segment = 0; Segment + 1u < TopIndices.size(); ++Segment)
+    {
+        const Uint32 TopA = TopIndices[Segment];
+        const Uint32 TopB = TopIndices[Segment + 1u];
+        const Uint32 BottomA = FirstBottomVertex + Segment;
+        const Uint32 BottomB = FirstBottomVertex + Segment + 1u;
+
+        Indices.push_back(TopA);
+        Indices.push_back(BottomA);
+        Indices.push_back(TopB);
+        Indices.push_back(TopB);
+        Indices.push_back(BottomA);
+        Indices.push_back(BottomB);
+    }
+
+    return static_cast<Uint32>(Vertices.size()) - FirstBottomVertex;
+}
+
+Uint32 AppendTileSkirts(std::vector<TerrainVertex>& Vertices,
+                        std::vector<Uint32>&        Indices,
+                        Uint32                      BaseVertex,
+                        Uint32                      SampleCountX,
+                        Uint32                      SampleCountZ,
+                        float                       SkirtDepthValue)
+{
+    auto LocalVertex = [&](Uint32 LocalX, Uint32 LocalZ) {
+        return BaseVertex + LocalZ * SampleCountX + LocalX;
+    };
+
+    std::vector<Uint32> West;
+    std::vector<Uint32> East;
+    std::vector<Uint32> South;
+    std::vector<Uint32> North;
+    West.reserve(SampleCountZ);
+    East.reserve(SampleCountZ);
+    South.reserve(SampleCountX);
+    North.reserve(SampleCountX);
+
+    for (Uint32 LocalZ = 0; LocalZ < SampleCountZ; ++LocalZ)
+    {
+        West.push_back(LocalVertex(0, LocalZ));
+        East.push_back(LocalVertex(SampleCountX - 1u, LocalZ));
+    }
+    for (Uint32 LocalX = 0; LocalX < SampleCountX; ++LocalX)
+    {
+        South.push_back(LocalVertex(LocalX, 0));
+        North.push_back(LocalVertex(LocalX, SampleCountZ - 1u));
+    }
+
+    Uint32 SkirtVertexCount = 0;
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, West,  float3{-1.0f, 0.0f, 0.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, East,  float3{+1.0f, 0.0f, 0.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, South, float3{0.0f, 0.0f, -1.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, North, float3{0.0f, 0.0f, +1.0f}, SkirtDepthValue);
+    return SkirtVertexCount;
 }
 
 static const char* TerrainVS = R"(
@@ -409,6 +484,7 @@ TerrainDrawRegion TerrainPatchRenderer::BuildDrawRegion(const TerrainQuadtreeNod
 void TerrainPatchRenderer::BeginFrameStats()
 {
     m_LastRenderedCellCount    = 0;
+    m_LastRenderedIndexCount   = 0;
     m_LastForwardDrawCallCount = 0;
     m_LastShadowDrawCallCount  = 0;
 }
@@ -419,6 +495,8 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
     std::vector<Uint32>        Indices;
     m_TileMeshRanges.clear();
     m_TileMeshRanges.resize(QuadtreeNodes.size());
+    m_PackedTileSkirtVertexCount = 0;
+    m_PackedTileSkirtIndexCount  = 0;
 
     const Uint32 TerrainCellCount = m_HeightField.GetCellCount();
     const float  CellSize = TerrainCellCount > 0 ? (2.0f * m_TerrainExtent) / static_cast<float>(TerrainCellCount) : 0.0f;
@@ -468,11 +546,17 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
             }
         }
 
+        Region.MainNumIndices = static_cast<Uint32>(Indices.size()) - Region.FirstIndexLocation;
+        const Uint32 SkirtFirstIndex = static_cast<Uint32>(Indices.size());
+        const Uint32 SkirtVertexCount = AppendTileSkirts(Vertices, Indices, Region.BaseVertex, SampleCountX, SampleCountZ, SkirtDepth);
         Region.NumIndices = static_cast<Uint32>(Indices.size()) - Region.FirstIndexLocation;
+        Region.SkirtIndexCount = static_cast<Uint32>(Indices.size()) - SkirtFirstIndex;
 
         TerrainTileMeshRange Range;
         Range.Region      = Region;
         Range.VertexCount = static_cast<Uint32>(Vertices.size()) - Region.BaseVertex;
+        m_PackedTileSkirtVertexCount += SkirtVertexCount;
+        m_PackedTileSkirtIndexCount += Region.SkirtIndexCount;
 
         if (Node.NodeIndex < m_TileMeshRanges.size())
             m_TileMeshRanges[Node.NodeIndex] = Range;
@@ -508,6 +592,7 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     TerrainHeightFieldDesc HeightFieldDesc;
     m_HeightField.GenerateProcedural(HeightFieldDesc);
     m_TerrainExtent = HeightFieldDesc.Extent;
+    m_SkirtDepth    = SkirtDepth;
 
     BuildPackedTileMeshCache(pDevice, QuadtreeNodes);
 
@@ -549,6 +634,7 @@ void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& Vi
     DrawTileMeshIndexed(pContext, Region);
     m_LastForwardDrawCallCount += Region.NumIndices > 0 ? 1u : 0u;
     m_LastRenderedCellCount += Region.CellCountX * Region.CellCountZ;
+    m_LastRenderedIndexCount += m_EnableSkirts ? Region.NumIndices : Region.MainNumIndices;
 }
 
 void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShadowConstants, const TerrainDrawRegion& Region)
@@ -571,12 +657,13 @@ void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShad
 
 void TerrainPatchRenderer::DrawTileMeshIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const
 {
-    if (Region.NumIndices == 0)
+    const Uint32 DrawIndexCount = m_EnableSkirts ? Region.NumIndices : Region.MainNumIndices;
+    if (DrawIndexCount == 0)
         return;
 
     DrawIndexedAttribs DrawAttrs;
     DrawAttrs.IndexType          = VT_UINT32;
-    DrawAttrs.NumIndices         = Region.NumIndices;
+    DrawAttrs.NumIndices         = DrawIndexCount;
     DrawAttrs.FirstIndexLocation = Region.FirstIndexLocation;
     DrawAttrs.BaseVertex         = Region.BaseVertex;
     DrawAttrs.Flags              = DRAW_FLAG_VERIFY_ALL;

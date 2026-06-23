@@ -31,6 +31,10 @@ struct ForwardRendererStats final
     Uint32 TerrainTileMeshCount = 0;
     Uint32 TerrainPackedVertexCount = 0;
     Uint32 TerrainPackedIndexCount = 0;
+    bool   TerrainSkirtsEnabled = true;
+    float  TerrainSkirtDepth = 0.0f;
+    Uint32 TerrainSkirtVertexCount = 0;
+    Uint32 TerrainSkirtIndexCount = 0;
     Uint32 TerrainCellCount   = 0;
     Uint32 TerrainSampleCountPerAxis = 0;
     float  TerrainMinHeight   = 0.0f;
@@ -60,6 +64,8 @@ public:
     const ForwardRendererStats& GetStats() const { return m_Stats; }
     void SetShowQuadtreeOverlay(bool Show) { m_ShowQuadtreeOverlay = Show; }
     bool GetShowQuadtreeOverlay() const { return m_ShowQuadtreeOverlay; }
+    void SetTerrainSkirtsEnabled(bool Enable) { m_TerrainPatchRenderer.SetEnableSkirts(Enable); }
+    bool GetTerrainSkirtsEnabled() const { return m_TerrainPatchRenderer.GetEnableSkirts(); }
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;

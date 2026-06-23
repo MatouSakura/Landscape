@@ -37,6 +37,8 @@ struct TerrainDrawRegion final
     Uint32 CellCountZ = 0;
     Uint32 BaseVertex = 0;
     Uint32 FirstIndexLocation = 0;
+    Uint32 MainNumIndices = 0;
+    Uint32 SkirtIndexCount = 0;
     Uint32 NumIndices = 0;
 };
 

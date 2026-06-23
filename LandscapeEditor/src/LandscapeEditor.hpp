@@ -29,6 +29,7 @@ private:
     FrameResources       m_FrameResources;
     ForwardRenderer      m_ForwardRenderer;
     bool                 m_ShowQuadtreeOverlay = true;
+    bool                 m_EnableTerrainSkirts = true;
 };
 
 } // namespace Diligent

@@ -62,6 +62,11 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Tile meshes: %u", Stats.TerrainTileMeshCount);
         ImGui::Text("Packed tile vertices: %u", Stats.TerrainPackedVertexCount);
         ImGui::Text("Packed tile indices: %u", Stats.TerrainPackedIndexCount);
+        if (ImGui::Checkbox("Enable terrain skirts", &m_EnableTerrainSkirts))
+            m_ForwardRenderer.SetTerrainSkirtsEnabled(m_EnableTerrainSkirts);
+        ImGui::Text("Skirt depth: %.2f", Stats.TerrainSkirtDepth);
+        ImGui::Text("Skirt vertices: %u", Stats.TerrainSkirtVertexCount);
+        ImGui::Text("Skirt indices: %u", Stats.TerrainSkirtIndexCount);
         ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
         ImGui::Text("Height range: %.2f .. %.2f", Stats.TerrainMinHeight, Stats.TerrainMaxHeight);
         ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);
