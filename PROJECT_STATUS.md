@@ -82,6 +82,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-lod-transition-diagnostics.md`
 - Added the terrain frustum culling implementation plan:
   `docs/superpowers/plans/2026-06-23-terrain-frustum-culling.md`
+- Added the scripted camera smoke presets implementation plan:
+  `docs/superpowers/plans/2026-06-23-scripted-camera-smoke.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -163,6 +165,8 @@ Current implementation:
 - Tracks debug leaf bound lines, skirt edge count, LOD transition edge count, and debug line vertex count in ImGui.
 - Adds CPU frustum culling for selected terrain leaves before render queue submission and debug overlay generation.
 - Tracks terrain frustum culling enabled state, candidate leaf count, visible leaf count, and culled leaf count in ImGui.
+- Adds scripted camera smoke presets through `--landscape_camera_preset default|mixed_lod|off_frustum`.
+- Shows the active scripted camera preset in the ImGui diagnostics panel.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
@@ -378,6 +382,34 @@ Terrain frustum culling validation completed on 2026-06-23:
 - Visual check: D3D12 capture shows terrain, grid, transparent quad, sky, and quadtree/skirt overlays still visible with terrain frustum culling enabled.
 - Implementation note: distance-based quadtree selection remains the candidate set. `ForwardRenderer` extracts a `ViewFrustum` from `RenderView.ViewProj`, builds per-node AABBs from XZ bounds and terrain height range, and submits only visible leaves to terrain rendering and debug overlay.
 
+Scripted camera smoke presets validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+  - `tools\verify_landscape_selected_leaf_render_items.py`
+  - `tools\verify_landscape_packed_tile_mesh_cache.py`
+  - `tools\verify_landscape_tile_skirts.py`
+  - `tools\verify_landscape_lod_tile_sampling.py`
+  - `tools\verify_landscape_lod_transition_diagnostics.py`
+  - `tools\verify_landscape_frustum_culling.py`
+  - `tools\verify_landscape_scripted_camera_smoke.py`
+- Smoke captures:
+  - D3D12 default: `build\Win64-vs18\smoke-scripted-camera-default-d3d12\landscape_scripted_default_d3d12.png`
+  - Vulkan default: `build\Win64-vs18\smoke-scripted-camera-default-vk\landscape_scripted_default_vk.png`
+  - D3D11 default: `build\Win64-vs18\smoke-scripted-camera-default-d3d11\landscape_scripted_default_d3d11.png`
+  - OpenGL default: `build\Win64-vs18\smoke-scripted-camera-default-gl\landscape_scripted_default_gl.png`
+  - D3D12 `mixed_lod`: `build\Win64-vs18\smoke-scripted-camera-mixed-lod-d3d12\landscape_scripted_mixed_lod_d3d12.png`
+  - D3D12 `off_frustum`: `build\Win64-vs18\smoke-scripted-camera-off-frustum-d3d12\landscape_scripted_off_frustum_d3d12.png`
+- Pixel check: all six captures are `640x480`, have visible terrain, and include cyan diagnostic overlay pixels.
+- Visual check: `mixed_lod` and `off_frustum` keep side-biased terrain/overlay views for mixed-level LOD transition and off-frustum culling regression captures.
+- Implementation note: `LandscapeEditor::ProcessCommandLine()` consumes `--landscape_camera_preset` after common `SampleApp` arguments are pruned. Presets are applied before `UpdateRenderView()`.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -486,7 +518,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add reduced-resolution tile sampling per quadtree level.
 - Done: Add LOD transition diagnostics and crack-boundary inspection.
 - Done: Add CPU frustum culling once node bounds are stable.
-- Next: Add scripted camera/smoke positions for mixed-level transition and culling regression captures.
+- Done: Add camera/debug controls or scripted smoke positions for mixed-level LOD transition and off-frustum culling regression captures.
 - Later: Add neighbor-aware stitching or morphing after real mixed-resolution terrain tiles exist.
 
 ### Phase 4: LOD Crack Fixing
@@ -680,11 +712,9 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add camera/debug controls or scripted smoke positions that force mixed-level LOD transitions and off-frustum culling for visual regression captures.
-2. Add neighbor-aware stitching or morphing research now that mixed-density tile sampling and transition diagnostics exist.
-3. Add external heightmap loading for one fixed terrain patch.
-4. Add external heightmap loading for one fixed terrain patch.
-5. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
+1. Add neighbor-aware stitching or morphing research now that mixed-density tile sampling, transition diagnostics, and scripted smoke camera views exist.
+2. Add external heightmap loading for one fixed terrain patch.
+3. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
 ## Notes
 

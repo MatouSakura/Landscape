@@ -1,6 +1,9 @@
 #include "LandscapeEditor.hpp"
 
+#include "CommandLineParser.hpp"
 #include "imgui.h"
+
+#include <string>
 
 namespace Diligent
 {
@@ -10,15 +13,40 @@ SampleBase* CreateSample()
     return new LandscapeEditor();
 }
 
+LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc, const char* const* argv)
+{
+    CommandLineParser ArgsParser{argc, argv};
+
+    std::string Preset;
+    if (!ArgsParser.Parse("landscape_camera_preset", Preset))
+        return CommandLineStatus::OK;
+
+    if (Preset == "default")
+    {
+        m_CameraPreset = LandscapeCameraPreset::Default;
+    }
+    else if (Preset == "mixed_lod")
+    {
+        m_CameraPreset = LandscapeCameraPreset::MixedLOD;
+    }
+    else if (Preset == "off_frustum")
+    {
+        m_CameraPreset = LandscapeCameraPreset::OffFrustum;
+    }
+    else
+    {
+        LOG_ERROR_MESSAGE("Invalid landscape_camera_preset '", Preset, "'. Expected one of: default, mixed_lod, off_frustum.");
+        return CommandLineStatus::Error;
+    }
+
+    return CommandLineStatus::OK;
+}
+
 void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
 {
     SampleBase::Initialize(InitInfo);
 
-    m_Camera.SetPos(float3{0.0f, 6.0f, -14.0f});
-    m_Camera.SetRotation(0.0f, -0.4f);
-    m_Camera.SetMoveSpeed(8.0f);
-    m_Camera.SetSpeedUpScales(4.0f, 12.0f);
-    m_Camera.Update(GetInputController(), 0.0f);
+    ApplyCameraPreset();
 
     m_FrameResources.Initialize(m_pDevice);
     m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
@@ -53,6 +81,7 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
     {
         ImGui::Begin("Landscape Forward");
         ImGui::Text("Mode: Forward Debug");
+        ImGui::Text("Camera preset: %s", GetCameraPresetName());
         ImGui::Text("Camera: %.2f %.2f %.2f", m_RenderView.CameraPosition.x, m_RenderView.CameraPosition.y, m_RenderView.CameraPosition.z);
         ImGui::Text("Viewport: %.0f x %.0f", m_RenderView.ViewportSize.x, m_RenderView.ViewportSize.y);
         const auto& Stats = m_ForwardRenderer.GetStats();
@@ -105,6 +134,46 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("PSO creations: %zu", Stats.PSOCreationCount);
         ImGui::End();
     }
+}
+
+void LandscapeEditor::ApplyCameraPreset()
+{
+    switch (m_CameraPreset)
+    {
+        case LandscapeCameraPreset::Default:
+            m_Camera.SetPos(float3{0.0f, 6.0f, -14.0f});
+            m_Camera.SetRotation(0.0f, -0.4f);
+            break;
+
+        case LandscapeCameraPreset::MixedLOD:
+            m_Camera.SetPos(float3{15.0f, 7.5f, -20.0f});
+            m_Camera.SetRotation(-0.62f, -0.36f);
+            break;
+
+        case LandscapeCameraPreset::OffFrustum:
+            m_Camera.SetPos(float3{18.0f, 7.5f, -20.0f});
+            m_Camera.SetRotation(-0.50f, -0.36f);
+            break;
+    }
+
+    m_Camera.SetMoveSpeed(8.0f);
+    m_Camera.SetSpeedUpScales(4.0f, 12.0f);
+    m_Camera.Update(GetInputController(), 0.0f);
+}
+
+const Char* LandscapeEditor::GetCameraPresetName() const
+{
+    switch (m_CameraPreset)
+    {
+        case LandscapeCameraPreset::Default:
+            return "default";
+        case LandscapeCameraPreset::MixedLOD:
+            return "mixed_lod";
+        case LandscapeCameraPreset::OffFrustum:
+            return "off_frustum";
+    }
+
+    return "unknown";
 }
 
 void LandscapeEditor::WindowResize(Uint32 Width, Uint32 Height)

@@ -14,6 +14,7 @@ class LandscapeEditor final : public SampleBase
 public:
     virtual void Initialize(const SampleInitInfo& InitInfo) override final;
 
+    virtual CommandLineStatus ProcessCommandLine(int argc, const char* const* argv) override final;
     virtual void Render() override final;
     virtual void Update(double CurrTime, double ElapsedTime, bool DoUpdateUI) override final;
     virtual void WindowResize(Uint32 Width, Uint32 Height) override final;
@@ -21,6 +22,15 @@ public:
     virtual const Char* GetSampleName() const override final { return "LandscapeEditor"; }
 
 private:
+    enum class LandscapeCameraPreset
+    {
+        Default,
+        MixedLOD,
+        OffFrustum
+    };
+
+    void ApplyCameraPreset();
+    const Char* GetCameraPresetName() const;
     void UpdateRenderView();
 
 private:
@@ -33,6 +43,7 @@ private:
     bool                 m_ShowLODTransitionOverlay = true;
     bool                 m_EnableTerrainSkirts = true;
     bool                 m_EnableTerrainFrustumCulling = true;
+    LandscapeCameraPreset m_CameraPreset = LandscapeCameraPreset::Default;
 };
 
 } // namespace Diligent
