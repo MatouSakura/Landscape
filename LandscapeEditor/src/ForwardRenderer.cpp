@@ -17,7 +17,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     TerrainQuadtreeDesc QuadtreeDesc;
     m_TerrainQuadtree.Build(QuadtreeDesc);
     m_TerrainPatchRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetNodes());
-    m_TerrainQuadtreeDebugRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetSelectedLeafCapacity() * 8u);
+    m_TerrainQuadtreeDebugRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetSelectedLeafCapacity() * 32u);
     m_TransparentRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_ForwardDebugPipeline.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_Stats.PSOCount         = m_PSOCache.GetPSOCount();
@@ -46,6 +46,11 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
+    const auto& InitialDebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
+    m_Stats.TerrainDebugLeafBoundLineCount = InitialDebugStats.LeafBoundLineCount;
+    m_Stats.TerrainDebugSkirtEdgeCount = InitialDebugStats.SkirtEdgeCount;
+    m_Stats.TerrainDebugLODTransitionEdgeCount = InitialDebugStats.LODTransitionEdgeCount;
+    m_Stats.TerrainDebugLineVertexCount = InitialDebugStats.LineVertexCount;
     m_Stats.ShadowCascadeCount = ShadowRenderer::CascadeCount;
     m_Stats.ShadowMapSize      = m_ShadowRenderer.GetShadowMapSize();
     m_Stats.SkyPassCount       = m_SkyRenderer.GetPassCount();
@@ -137,6 +142,11 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
+    const auto& DebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
+    m_Stats.TerrainDebugLeafBoundLineCount = DebugStats.LeafBoundLineCount;
+    m_Stats.TerrainDebugSkirtEdgeCount = DebugStats.SkirtEdgeCount;
+    m_Stats.TerrainDebugLODTransitionEdgeCount = DebugStats.LODTransitionEdgeCount;
+    m_Stats.TerrainDebugLineVertexCount = DebugStats.LineVertexCount;
     m_Stats.ShadowCascadeCount = ShadowRenderer::CascadeCount;
     m_Stats.ShadowMapSize      = m_ShadowRenderer.GetShadowMapSize();
     m_Stats.SkyPassCount       = m_SkyRenderer.GetPassCount();

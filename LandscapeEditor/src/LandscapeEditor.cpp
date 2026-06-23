@@ -23,6 +23,8 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     m_FrameResources.Initialize(m_pDevice);
     m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
     m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
+    m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
+    m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
     UpdateRenderView();
 }
 
@@ -74,10 +76,18 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Average height: %.2f", Stats.TerrainAverageHeight);
         if (ImGui::Checkbox("Show quadtree overlay", &m_ShowQuadtreeOverlay))
             m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
+        if (ImGui::Checkbox("Show skirt edge overlay", &m_ShowSkirtEdgeOverlay))
+            m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
+        if (ImGui::Checkbox("Show LOD transition overlay", &m_ShowLODTransitionOverlay))
+            m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
         ImGui::Text("Quadtree nodes: %u", Stats.TerrainQuadtreeNodeCount);
         ImGui::Text("Selected leaves: %u", Stats.TerrainQuadtreeSelectedLeafCount);
         ImGui::Text("Max quadtree depth: %u", Stats.TerrainQuadtreeMaxDepth);
         ImGui::Text("Max selected LOD: %u", Stats.TerrainQuadtreeMaxSelectedLevel);
+        ImGui::Text("Debug leaf bound lines: %u", Stats.TerrainDebugLeafBoundLineCount);
+        ImGui::Text("Debug skirt edges: %u", Stats.TerrainDebugSkirtEdgeCount);
+        ImGui::Text("Debug LOD transition edges: %u", Stats.TerrainDebugLODTransitionEdgeCount);
+        ImGui::Text("Debug line vertices: %u", Stats.TerrainDebugLineVertexCount);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Sky passes: %u", Stats.SkyPassCount);

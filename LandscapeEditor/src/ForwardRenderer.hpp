@@ -53,6 +53,10 @@ struct ForwardRendererStats final
     Uint32 TerrainQuadtreeSelectedLeafCount = 0;
     Uint32 TerrainQuadtreeMaxDepth = 0;
     Uint32 TerrainQuadtreeMaxSelectedLevel = 0;
+    Uint32 TerrainDebugLeafBoundLineCount = 0;
+    Uint32 TerrainDebugSkirtEdgeCount = 0;
+    Uint32 TerrainDebugLODTransitionEdgeCount = 0;
+    Uint32 TerrainDebugLineVertexCount = 0;
     Uint32 PostProcessPassCount = 0;
     size_t PSOCount           = 0;
     size_t PSOCreationCount = 0;
@@ -67,6 +71,8 @@ public:
     const ForwardRendererStats& GetStats() const { return m_Stats; }
     void SetShowQuadtreeOverlay(bool Show) { m_ShowQuadtreeOverlay = Show; }
     bool GetShowQuadtreeOverlay() const { return m_ShowQuadtreeOverlay; }
+    void SetShowSkirtEdgeOverlay(bool Show) { m_TerrainQuadtreeDebugRenderer.SetShowSkirtEdges(Show); }
+    void SetShowLODTransitionOverlay(bool Show) { m_TerrainQuadtreeDebugRenderer.SetShowLODTransitionEdges(Show); }
     void SetTerrainSkirtsEnabled(bool Enable) { m_TerrainPatchRenderer.SetEnableSkirts(Enable); }
     bool GetTerrainSkirtsEnabled() const { return m_TerrainPatchRenderer.GetEnableSkirts(); }
 

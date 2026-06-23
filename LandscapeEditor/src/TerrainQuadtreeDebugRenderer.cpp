@@ -13,6 +13,7 @@
 #include "TerrainQuadtree.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace Diligent
@@ -28,6 +29,11 @@ struct TerrainQuadtreeDebugVertex
 };
 
 static constexpr float OverlayY = 0.08f;
+static constexpr float SkirtOverlayY = 0.13f;
+static constexpr float LODTransitionOverlayY = 0.18f;
+static constexpr float EdgeEpsilon = 0.0001f;
+static constexpr float3 SkirtEdgeColor{0.05f, 2.30f, 2.80f};
+static constexpr float3 LODTransitionColor{3.40f, 0.20f, 0.05f};
 
 static const char* QuadtreeDebugVS = R"(
 cbuffer CameraConstants
@@ -148,6 +154,102 @@ void AppendLeafBounds(std::vector<TerrainQuadtreeDebugVertex>& Vertices, const T
     Vertices.push_back(TerrainQuadtreeDebugVertex{SW, Color});
 }
 
+void AppendLine(std::vector<TerrainQuadtreeDebugVertex>& Vertices, const float3& Start, const float3& End, const float3& Color)
+{
+    Vertices.push_back(TerrainQuadtreeDebugVertex{Start, Color});
+    Vertices.push_back(TerrainQuadtreeDebugVertex{End, Color});
+}
+
+void AppendSkirtEdges(std::vector<TerrainQuadtreeDebugVertex>& Vertices, const TerrainQuadtreeNode& Node)
+{
+    const float3 SW{Node.MinXZ.x, SkirtOverlayY, Node.MinXZ.y};
+    const float3 SE{Node.MaxXZ.x, SkirtOverlayY, Node.MinXZ.y};
+    const float3 NW{Node.MinXZ.x, SkirtOverlayY, Node.MaxXZ.y};
+    const float3 NE{Node.MaxXZ.x, SkirtOverlayY, Node.MaxXZ.y};
+
+    AppendLine(Vertices, SW, SE, SkirtEdgeColor);
+    AppendLine(Vertices, SE, NE, SkirtEdgeColor);
+    AppendLine(Vertices, NE, NW, SkirtEdgeColor);
+    AppendLine(Vertices, NW, SW, SkirtEdgeColor);
+}
+
+bool NearlyEqual(float Lhs, float Rhs)
+{
+    return std::abs(Lhs - Rhs) <= EdgeEpsilon;
+}
+
+bool RangesOverlap(float LhsMin, float LhsMax, float RhsMin, float RhsMax, float& OverlapMin, float& OverlapMax)
+{
+    OverlapMin = std::max(LhsMin, RhsMin);
+    OverlapMax = std::min(LhsMax, RhsMax);
+    return OverlapMax - OverlapMin > EdgeEpsilon;
+}
+
+bool FindSharedEdgeOverlap(const TerrainQuadtreeNode& Lhs, const TerrainQuadtreeNode& Rhs, float3& OutStart, float3& OutEnd)
+{
+    if (Lhs.Level != Rhs.Level)
+    {
+        float OverlapMin = 0.0f;
+        float OverlapMax = 0.0f;
+
+        if (NearlyEqual(Lhs.MaxXZ.x, Rhs.MinXZ.x) && RangesOverlap(Lhs.MinXZ.y, Lhs.MaxXZ.y, Rhs.MinXZ.y, Rhs.MaxXZ.y, OverlapMin, OverlapMax))
+        {
+            OutStart = float3{Lhs.MaxXZ.x, LODTransitionOverlayY, OverlapMin};
+            OutEnd   = float3{Lhs.MaxXZ.x, LODTransitionOverlayY, OverlapMax};
+            return true;
+        }
+        if (NearlyEqual(Lhs.MinXZ.x, Rhs.MaxXZ.x) && RangesOverlap(Lhs.MinXZ.y, Lhs.MaxXZ.y, Rhs.MinXZ.y, Rhs.MaxXZ.y, OverlapMin, OverlapMax))
+        {
+            OutStart = float3{Lhs.MinXZ.x, LODTransitionOverlayY, OverlapMin};
+            OutEnd   = float3{Lhs.MinXZ.x, LODTransitionOverlayY, OverlapMax};
+            return true;
+        }
+        if (NearlyEqual(Lhs.MaxXZ.y, Rhs.MinXZ.y) && RangesOverlap(Lhs.MinXZ.x, Lhs.MaxXZ.x, Rhs.MinXZ.x, Rhs.MaxXZ.x, OverlapMin, OverlapMax))
+        {
+            OutStart = float3{OverlapMin, LODTransitionOverlayY, Lhs.MaxXZ.y};
+            OutEnd   = float3{OverlapMax, LODTransitionOverlayY, Lhs.MaxXZ.y};
+            return true;
+        }
+        if (NearlyEqual(Lhs.MinXZ.y, Rhs.MaxXZ.y) && RangesOverlap(Lhs.MinXZ.x, Lhs.MaxXZ.x, Rhs.MinXZ.x, Rhs.MaxXZ.x, OverlapMin, OverlapMax))
+        {
+            OutStart = float3{OverlapMin, LODTransitionOverlayY, Lhs.MinXZ.y};
+            OutEnd   = float3{OverlapMax, LODTransitionOverlayY, Lhs.MinXZ.y};
+            return true;
+        }
+    }
+
+    return false;
+}
+
+Uint32 AppendLODTransitionEdges(std::vector<TerrainQuadtreeDebugVertex>& Vertices,
+                                const std::vector<TerrainQuadtreeNode>&  Nodes,
+                                const std::vector<Uint32>&               SelectedNodeIndices)
+{
+    Uint32 EdgeCount = 0;
+    for (size_t LhsIndex = 0; LhsIndex < SelectedNodeIndices.size(); ++LhsIndex)
+    {
+        const Uint32 LhsNodeIndex = SelectedNodeIndices[LhsIndex];
+        if (LhsNodeIndex >= Nodes.size())
+            continue;
+
+        for (size_t RhsIndex = LhsIndex + 1u; RhsIndex < SelectedNodeIndices.size(); ++RhsIndex)
+        {
+            const Uint32 RhsNodeIndex = SelectedNodeIndices[RhsIndex];
+            if (RhsNodeIndex >= Nodes.size())
+                continue;
+
+            float3 Start;
+            float3 End;
+            if (FindSharedEdgeOverlap(Nodes[LhsNodeIndex], Nodes[RhsNodeIndex], Start, End))
+            {
+                AppendLine(Vertices, Start, End, LODTransitionColor);
+                ++EdgeCount;
+            }
+        }
+    }
+    return EdgeCount;
+}
+
 RefCntAutoPtr<IPipelineState> CreateQuadtreeDebugPSO(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 {
     const bool IsGL = pDevice->GetDeviceInfo().IsGLDevice();
@@ -233,20 +335,47 @@ void TerrainQuadtreeDebugRenderer::Render(IDeviceContext* pContext, const Render
     if (Selection.SelectedNodeIndices.empty() || m_MaxLineVertexCount == 0)
     {
         m_LastLineVertexCount = 0;
+        m_Stats = {};
         return;
     }
 
     std::vector<TerrainQuadtreeDebugVertex> Vertices;
-    Vertices.reserve(std::min<Uint32>(m_MaxLineVertexCount, static_cast<Uint32>(Selection.SelectedNodeIndices.size() * 8u)));
+    Vertices.reserve(m_MaxLineVertexCount);
+    m_Stats = {};
 
     for (Uint32 NodeIndex : Selection.SelectedNodeIndices)
     {
         if (NodeIndex >= Nodes.size() || Vertices.size() + 8u > m_MaxLineVertexCount)
             break;
         AppendLeafBounds(Vertices, Nodes[NodeIndex]);
+        m_Stats.LeafBoundLineCount += 4u;
+    }
+
+    if (m_ShowSkirtEdges)
+    {
+        for (Uint32 NodeIndex : Selection.SelectedNodeIndices)
+        {
+            if (NodeIndex >= Nodes.size() || Vertices.size() + 8u > m_MaxLineVertexCount)
+                break;
+            AppendSkirtEdges(Vertices, Nodes[NodeIndex]);
+            m_Stats.SkirtEdgeCount += 4u;
+        }
+    }
+
+    if (m_ShowLODTransitionEdges && Vertices.size() + 2u <= m_MaxLineVertexCount)
+    {
+        const Uint32 PreviousVertexCount = static_cast<Uint32>(Vertices.size());
+        m_Stats.LODTransitionEdgeCount = AppendLODTransitionEdges(Vertices, Nodes, Selection.SelectedNodeIndices);
+        if (Vertices.size() > m_MaxLineVertexCount)
+        {
+            Vertices.resize(m_MaxLineVertexCount - (m_MaxLineVertexCount % 2u));
+            const Uint32 AddedVertices = static_cast<Uint32>(Vertices.size()) - PreviousVertexCount;
+            m_Stats.LODTransitionEdgeCount = AddedVertices / 2u;
+        }
     }
 
     m_LastLineVertexCount = static_cast<Uint32>(Vertices.size());
+    m_Stats.LineVertexCount = m_LastLineVertexCount;
     if (m_LastLineVertexCount == 0)
         return;
 
