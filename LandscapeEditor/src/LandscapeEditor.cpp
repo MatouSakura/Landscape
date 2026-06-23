@@ -139,6 +139,8 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("LOD stitching seams: %u", Stats.TerrainLODStitchingSeamEdgeCount);
         ImGui::Text("LOD stitching max delta: %u, ratio: %u", Stats.TerrainLODStitchingMaxDelta, Stats.TerrainLODStitchingMaxRatio);
         ImGui::Text("LOD stitching length: %.2f", Stats.TerrainLODStitchingTotalLength);
+        ImGui::Text("LOD index stitched nodes: %u, edges: %u", Stats.TerrainLODIndexStitchingNodeCount, Stats.TerrainLODIndexStitchingEdgeCount);
+        ImGui::Text("LOD index stitched indices: %u, ratio: %u", Stats.TerrainLODIndexStitchingIndexCount, Stats.TerrainLODIndexStitchingMaxRatio);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Sky passes: %u", Stats.SkyPassCount);

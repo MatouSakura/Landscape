@@ -45,6 +45,10 @@ struct TerrainDrawRegion final
     Uint32 MainNumIndices = 0;
     Uint32 SkirtIndexCount = 0;
     Uint32 NumIndices = 0;
+    bool   UseStitchedIndexBuffer = false;
+    Uint32 StitchedFirstIndexLocation = 0;
+    Uint32 StitchedMainNumIndices = 0;
+    Uint32 StitchedNumIndices = 0;
 };
 
 struct RenderItem final

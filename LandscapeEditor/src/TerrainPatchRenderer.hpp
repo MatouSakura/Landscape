@@ -5,6 +5,7 @@
 #include "RefCntAutoPtr.hpp"
 #include "RenderQueue.hpp"
 #include "TerrainHeightField.hpp"
+#include "TerrainLODIndexStitching.hpp"
 #include "TerrainQuadtree.hpp"
 
 #include <vector>
@@ -36,6 +37,7 @@ public:
     void SetEnableSkirts(bool Enable) { m_EnableSkirts = Enable; }
     bool GetEnableSkirts() const { return m_EnableSkirts; }
     float GetSkirtDepth() const { return m_SkirtDepth; }
+    void PrepareLODIndexStitching(IDeviceContext* pContext, TerrainLODIndexStitching& Stitching);
     void Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainDrawRegion& Region, ITextureView* pShadowMapSRV);
     void RenderShadow(IDeviceContext* pContext, IBuffer* pShadowConstants, const TerrainDrawRegion& Region);
 
@@ -67,6 +69,7 @@ private:
     std::vector<TerrainTileMeshRange>      m_TileMeshRanges;
     RefCntAutoPtr<IBuffer>                m_pVertexBuffer;
     RefCntAutoPtr<IBuffer>                m_pIndexBuffer;
+    RefCntAutoPtr<IBuffer>                m_pStitchedIndexBuffer;
     RefCntAutoPtr<IPipelineState>         m_pTerrainPSO;
     RefCntAutoPtr<IPipelineState>         m_pShadowPSO;
     RefCntAutoPtr<IShaderResourceBinding> m_pTerrainSRB;
@@ -81,6 +84,7 @@ private:
     Uint32                                m_PackedTileIndexCount = 0;
     Uint32                                m_PackedTileSkirtVertexCount = 0;
     Uint32                                m_PackedTileSkirtIndexCount = 0;
+    Uint32                                m_StitchedIndexBufferCapacity = 0;
     Uint32                                m_MinLODSampleStep = 1;
     Uint32                                m_MaxLODSampleStep = 1;
     float                                 m_TerrainExtent = 20.0f;

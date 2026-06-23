@@ -3,6 +3,7 @@
 #include "DeviceContext.h"
 #include "Errors.hpp"
 #include "FrameResources.hpp"
+#include "MapHelper.hpp"
 #include "PSOCache.hpp"
 #include "RenderDevice.h"
 #include "RenderView.hpp"
@@ -12,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 #include <vector>
 
@@ -139,6 +141,192 @@ Uint32 AppendTileSkirts(std::vector<TerrainVertex>& Vertices,
     SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, BaseVertex, South, float3{0.0f, 0.0f, -1.0f}, SkirtDepthValue);
     SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, BaseVertex, North, float3{0.0f, 0.0f, +1.0f}, SkirtDepthValue);
     return SkirtVertexCount;
+}
+
+void AppendSurfaceCell(std::vector<Uint32>& Indices, Uint32 LocalRowStride, Uint32 LocalX, Uint32 LocalZ)
+{
+    const Uint32 LocalI0 = LocalZ * LocalRowStride + LocalX;
+    const Uint32 LocalI1 = LocalI0 + 1u;
+    const Uint32 LocalI2 = LocalI0 + LocalRowStride;
+    const Uint32 LocalI3 = LocalI2 + 1u;
+
+    Indices.push_back(LocalI0);
+    Indices.push_back(LocalI2);
+    Indices.push_back(LocalI1);
+    Indices.push_back(LocalI1);
+    Indices.push_back(LocalI2);
+    Indices.push_back(LocalI3);
+}
+
+std::vector<Uint32> BuildStitchStops(Uint32 SampleCount, Uint32 StitchRatio)
+{
+    std::vector<Uint32> Stops;
+    if (SampleCount == 0)
+        return Stops;
+
+    const Uint32 Last = SampleCount - 1u;
+    const Uint32 Step = std::max(StitchRatio, 1u);
+    Stops.push_back(0);
+    for (Uint32 Sample = Step; Sample < Last; Sample += Step)
+        Stops.push_back(Sample);
+    if (Stops.back() != Last)
+        Stops.push_back(Last);
+    return Stops;
+}
+
+void AppendStitchedEdgeBand(std::vector<Uint32>& Indices,
+                            const TerrainDrawRegion& Region,
+                            TerrainLODStitchEdgeMask Edge,
+                            Uint32 StitchRatio)
+{
+    if (Region.MeshSampleCountX < 2u || Region.MeshSampleCountZ < 2u)
+        return;
+
+    auto LocalVertex = [&](Uint32 LocalX, Uint32 LocalZ) {
+        return LocalZ * Region.MeshSampleCountX + LocalX;
+    };
+
+    const bool VerticalEdge = Edge == TerrainLODStitchEdgeMask::West || Edge == TerrainLODStitchEdgeMask::East;
+    const Uint32 SampleCount = VerticalEdge ? Region.MeshSampleCountZ : Region.MeshSampleCountX;
+    const std::vector<Uint32> Stops = BuildStitchStops(SampleCount, StitchRatio);
+    if (Stops.size() < 2u)
+        return;
+
+    auto BoundaryVertex = [&](Uint32 Sample) {
+        if (Edge == TerrainLODStitchEdgeMask::West)
+            return LocalVertex(0, Sample);
+        if (Edge == TerrainLODStitchEdgeMask::East)
+            return LocalVertex(Region.MeshSampleCountX - 1u, Sample);
+        if (Edge == TerrainLODStitchEdgeMask::South)
+            return LocalVertex(Sample, 0);
+        return LocalVertex(Sample, Region.MeshSampleCountZ - 1u);
+    };
+
+    auto InnerVertex = [&](Uint32 Sample) {
+        if (Edge == TerrainLODStitchEdgeMask::West)
+            return LocalVertex(1u, Sample);
+        if (Edge == TerrainLODStitchEdgeMask::East)
+            return LocalVertex(Region.MeshSampleCountX - 2u, Sample);
+        if (Edge == TerrainLODStitchEdgeMask::South)
+            return LocalVertex(Sample, 1u);
+        return LocalVertex(Sample, Region.MeshSampleCountZ - 2u);
+    };
+
+    for (size_t StopIndex = 0; StopIndex + 1u < Stops.size(); ++StopIndex)
+    {
+        const Uint32 Start = Stops[StopIndex];
+        const Uint32 End   = Stops[StopIndex + 1u];
+        const Uint32 BoundaryStart = BoundaryVertex(Start);
+        const Uint32 BoundaryEnd   = BoundaryVertex(End);
+
+        Indices.push_back(BoundaryStart);
+        Indices.push_back(BoundaryEnd);
+        Indices.push_back(InnerVertex(End));
+
+        for (Uint32 Sample = End; Sample > Start; --Sample)
+        {
+            Indices.push_back(BoundaryStart);
+            Indices.push_back(InnerVertex(Sample));
+            Indices.push_back(InnerVertex(Sample - 1u));
+        }
+    }
+}
+
+void AppendStitchedSurfaceIndices(std::vector<Uint32>& Indices,
+                                  const TerrainDrawRegion& Region,
+                                  const TerrainLODStitchedDrawRegion& StitchedRegion)
+{
+    const TerrainLODStitchEdgeMask EdgeMask = StitchedRegion.EdgeMask;
+    const bool StitchWest  = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::West);
+    const bool StitchEast  = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::East);
+    const bool StitchSouth = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::South);
+    const bool StitchNorth = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::North);
+
+    const Uint32 StartCellX = StitchWest ? 1u : 0u;
+    const Uint32 StartCellZ = StitchSouth ? 1u : 0u;
+    const Uint32 EndCellX = Region.MeshCellCountX > (StitchEast ? 1u : 0u) ? Region.MeshCellCountX - (StitchEast ? 1u : 0u) : 0u;
+    const Uint32 EndCellZ = Region.MeshCellCountZ > (StitchNorth ? 1u : 0u) ? Region.MeshCellCountZ - (StitchNorth ? 1u : 0u) : 0u;
+
+    if (StartCellX < EndCellX && StartCellZ < EndCellZ)
+    {
+        for (Uint32 LocalZ = StartCellZ; LocalZ < EndCellZ; ++LocalZ)
+        {
+            for (Uint32 LocalX = StartCellX; LocalX < EndCellX; ++LocalX)
+                AppendSurfaceCell(Indices, Region.MeshSampleCountX, LocalX, LocalZ);
+        }
+    }
+
+    if (StitchWest)
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::West, StitchedRegion.WestStitchRatio);
+    if (StitchEast)
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::East, StitchedRegion.EastStitchRatio);
+    if (StitchSouth)
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::South, StitchedRegion.SouthStitchRatio);
+    if (StitchNorth)
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::North, StitchedRegion.NorthStitchRatio);
+}
+
+void AppendSkirtEdgeIndices(std::vector<Uint32>&       Indices,
+                            const std::vector<Uint32>& TopLocalIndices,
+                            Uint32                     FirstBottomLocalVertex)
+{
+    for (Uint32 Segment = 0; Segment + 1u < TopLocalIndices.size(); ++Segment)
+    {
+        const Uint32 TopA = TopLocalIndices[Segment];
+        const Uint32 TopB = TopLocalIndices[Segment + 1u];
+        const Uint32 BottomA = FirstBottomLocalVertex + Segment;
+        const Uint32 BottomB = FirstBottomLocalVertex + Segment + 1u;
+
+        Indices.push_back(TopA);
+        Indices.push_back(BottomA);
+        Indices.push_back(TopB);
+        Indices.push_back(TopB);
+        Indices.push_back(BottomA);
+        Indices.push_back(BottomB);
+    }
+}
+
+void AppendTileSkirtIndices(std::vector<Uint32>& Indices, Uint32 SampleCountX, Uint32 SampleCountZ)
+{
+    auto LocalVertex = [&](Uint32 LocalX, Uint32 LocalZ) {
+        return LocalZ * SampleCountX + LocalX;
+    };
+
+    std::vector<Uint32> West;
+    std::vector<Uint32> East;
+    std::vector<Uint32> South;
+    std::vector<Uint32> North;
+    West.reserve(SampleCountZ);
+    East.reserve(SampleCountZ);
+    South.reserve(SampleCountX);
+    North.reserve(SampleCountX);
+
+    for (Uint32 LocalZ = 0; LocalZ < SampleCountZ; ++LocalZ)
+    {
+        West.push_back(LocalVertex(0, LocalZ));
+        East.push_back(LocalVertex(SampleCountX - 1u, LocalZ));
+    }
+    for (Uint32 LocalX = 0; LocalX < SampleCountX; ++LocalX)
+    {
+        South.push_back(LocalVertex(LocalX, 0));
+        North.push_back(LocalVertex(LocalX, SampleCountZ - 1u));
+    }
+
+    Uint32 FirstBottomLocalVertex = SampleCountX * SampleCountZ;
+    AppendSkirtEdgeIndices(Indices, West, FirstBottomLocalVertex);
+    FirstBottomLocalVertex += SampleCountZ;
+    AppendSkirtEdgeIndices(Indices, East, FirstBottomLocalVertex);
+    FirstBottomLocalVertex += SampleCountZ;
+    AppendSkirtEdgeIndices(Indices, South, FirstBottomLocalVertex);
+    FirstBottomLocalVertex += SampleCountX;
+    AppendSkirtEdgeIndices(Indices, North, FirstBottomLocalVertex);
+}
+
+Uint32 GetTerrainRegionDrawIndexCount(const TerrainDrawRegion& Region, bool EnableSkirts)
+{
+    if (Region.UseStitchedIndexBuffer)
+        return EnableSkirts ? Region.StitchedNumIndices : Region.StitchedMainNumIndices;
+    return EnableSkirts ? Region.NumIndices : Region.MainNumIndices;
 }
 
 Uint32 GetMaxQuadtreeLevel(const std::vector<TerrainQuadtreeNode>& QuadtreeNodes)
@@ -584,19 +772,7 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
         for (Uint32 LocalZ = 0; LocalZ < Region.MeshCellCountZ; ++LocalZ)
         {
             for (Uint32 LocalX = 0; LocalX < Region.MeshCellCountX; ++LocalX)
-            {
-                const Uint32 LocalI0 = LocalZ * LocalRowStride + LocalX;
-                const Uint32 LocalI1 = LocalI0 + 1u;
-                const Uint32 LocalI2 = LocalI0 + LocalRowStride;
-                const Uint32 LocalI3 = LocalI2 + 1u;
-
-                Indices.push_back(LocalI0);
-                Indices.push_back(LocalI2);
-                Indices.push_back(LocalI1);
-                Indices.push_back(LocalI1);
-                Indices.push_back(LocalI2);
-                Indices.push_back(LocalI3);
-            }
+                AppendSurfaceCell(Indices, LocalRowStride, LocalX, LocalZ);
         }
 
         Region.MainNumIndices = static_cast<Uint32>(Indices.size()) - Region.FirstIndexLocation;
@@ -641,6 +817,15 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
     IBData.pData    = Indices.data();
     IBData.DataSize = IBDesc.Size;
     pDevice->CreateBuffer(IBDesc, &IBData, &m_pIndexBuffer);
+
+    BufferDesc StitchedIBDesc;
+    StitchedIBDesc.Name           = "LandscapeEditor dynamic terrain LOD stitched index buffer";
+    StitchedIBDesc.Usage          = USAGE_DYNAMIC;
+    StitchedIBDesc.BindFlags      = BIND_INDEX_BUFFER;
+    StitchedIBDesc.CPUAccessFlags = CPU_ACCESS_WRITE;
+    StitchedIBDesc.Size           = static_cast<Uint64>(std::max<Uint32>(m_PackedTileIndexCount, 1u) * sizeof(Uint32));
+    pDevice->CreateBuffer(StitchedIBDesc, nullptr, &m_pStitchedIndexBuffer);
+    m_StitchedIndexBufferCapacity = std::max<Uint32>(m_PackedTileIndexCount, 1u);
 }
 
 void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes)
@@ -663,6 +848,34 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     m_pShadowPSO->CreateShaderResourceBinding(&m_pShadowSRB, true);
 }
 
+void TerrainPatchRenderer::PrepareLODIndexStitching(IDeviceContext* pContext, TerrainLODIndexStitching& Stitching)
+{
+    std::vector<Uint32> Indices;
+    Indices.reserve(m_StitchedIndexBufferCapacity);
+
+    for (TerrainLODStitchedDrawRegion& StitchedRegion : Stitching.GetRegions())
+    {
+        if (StitchedRegion.NodeIndex >= m_TileMeshRanges.size())
+            continue;
+
+        const TerrainDrawRegion& Region = m_TileMeshRanges[StitchedRegion.NodeIndex].Region;
+        StitchedRegion.FirstIndexLocation = static_cast<Uint32>(Indices.size());
+        AppendStitchedSurfaceIndices(Indices, Region, StitchedRegion);
+        StitchedRegion.MainNumIndices = static_cast<Uint32>(Indices.size()) - StitchedRegion.FirstIndexLocation;
+        AppendTileSkirtIndices(Indices, Region.MeshSampleCountX, Region.MeshSampleCountZ);
+        StitchedRegion.NumIndices = static_cast<Uint32>(Indices.size()) - StitchedRegion.FirstIndexLocation;
+    }
+
+    VERIFY(Indices.size() <= m_StitchedIndexBufferCapacity, "Dynamic terrain LOD stitched index buffer capacity is too small");
+    if (!Indices.empty())
+    {
+        MapHelper<Uint32> MappedIndices{pContext, m_pStitchedIndexBuffer, MAP_WRITE, MAP_FLAG_DISCARD};
+        std::memcpy(MappedIndices, Indices.data(), Indices.size() * sizeof(Uint32));
+    }
+
+    Stitching.SetGeneratedIndexStats(static_cast<Uint32>(Indices.size()));
+}
+
 void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainDrawRegion& Region, ITextureView* pShadowMapSRV)
 {
     (void)View;
@@ -682,16 +895,16 @@ void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& Vi
     const Uint64 Offset = 0;
     IBuffer*     VBs[]  = {m_pVertexBuffer};
     pContext->SetVertexBuffers(0, 1, VBs, &Offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
-    pContext->SetIndexBuffer(m_pIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     pContext->SetPipelineState(m_pTerrainPSO);
     pContext->CommitShaderResources(m_pTerrainSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawTileMeshIndexed(pContext, Region);
-    m_LastForwardDrawCallCount += Region.NumIndices > 0 ? 1u : 0u;
+    const Uint32 DrawIndexCount = GetTerrainRegionDrawIndexCount(Region, m_EnableSkirts);
+    m_LastForwardDrawCallCount += DrawIndexCount > 0 ? 1u : 0u;
     m_LastRenderedCellCount += Region.CellCountX * Region.CellCountZ;
     m_LastRenderedMeshCellCount += Region.MeshCellCountX * Region.MeshCellCountZ;
-    m_LastRenderedIndexCount += m_EnableSkirts ? Region.NumIndices : Region.MainNumIndices;
+    m_LastRenderedIndexCount += DrawIndexCount;
 }
 
 void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShadowConstants, const TerrainDrawRegion& Region)
@@ -703,25 +916,31 @@ void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShad
     const Uint64 Offset = 0;
     IBuffer*     VBs[]  = {m_pVertexBuffer};
     pContext->SetVertexBuffers(0, 1, VBs, &Offset, RESOURCE_STATE_TRANSITION_MODE_TRANSITION, SET_VERTEX_BUFFERS_FLAG_RESET);
-    pContext->SetIndexBuffer(m_pIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     pContext->SetPipelineState(m_pShadowPSO);
     pContext->CommitShaderResources(m_pShadowSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawTileMeshIndexed(pContext, Region);
-    m_LastShadowDrawCallCount += Region.NumIndices > 0 ? 1u : 0u;
+    m_LastShadowDrawCallCount += GetTerrainRegionDrawIndexCount(Region, m_EnableSkirts) > 0 ? 1u : 0u;
 }
 
 void TerrainPatchRenderer::DrawTileMeshIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const
 {
-    const Uint32 DrawIndexCount = m_EnableSkirts ? Region.NumIndices : Region.MainNumIndices;
+    const bool UseStitchedIndexBuffer = Region.UseStitchedIndexBuffer && m_pStitchedIndexBuffer;
+    IBuffer* pIndexBuffer = UseStitchedIndexBuffer ? m_pStitchedIndexBuffer.RawPtr() : m_pIndexBuffer.RawPtr();
+    const Uint32 FirstIndexLocation = UseStitchedIndexBuffer ? Region.StitchedFirstIndexLocation : Region.FirstIndexLocation;
+    const Uint32 DrawIndexCount = UseStitchedIndexBuffer ?
+        (m_EnableSkirts ? Region.StitchedNumIndices : Region.StitchedMainNumIndices) :
+        (m_EnableSkirts ? Region.NumIndices : Region.MainNumIndices);
     if (DrawIndexCount == 0)
         return;
+
+    pContext->SetIndexBuffer(pIndexBuffer, 0, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
     DrawIndexedAttribs DrawAttrs;
     DrawAttrs.IndexType          = VT_UINT32;
     DrawAttrs.NumIndices         = DrawIndexCount;
-    DrawAttrs.FirstIndexLocation = Region.FirstIndexLocation;
+    DrawAttrs.FirstIndexLocation = FirstIndexLocation;
     DrawAttrs.BaseVertex         = Region.BaseVertex;
     DrawAttrs.Flags              = DRAW_FLAG_VERIFY_ALL;
     pContext->DrawIndexed(DrawAttrs);
