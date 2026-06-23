@@ -35,6 +35,11 @@ struct TerrainDrawRegion final
     Uint32 FirstCellZ = 0;
     Uint32 CellCountX = 0;
     Uint32 CellCountZ = 0;
+    Uint32 LODSampleStep = 1;
+    Uint32 MeshCellCountX = 0;
+    Uint32 MeshCellCountZ = 0;
+    Uint32 MeshSampleCountX = 0;
+    Uint32 MeshSampleCountZ = 0;
     Uint32 BaseVertex = 0;
     Uint32 FirstIndexLocation = 0;
     Uint32 MainNumIndices = 0;

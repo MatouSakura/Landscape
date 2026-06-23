@@ -25,6 +25,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetTriangleCount();
     m_Stats.TerrainRenderItemCount = 0;
     m_Stats.TerrainRenderedCellCount = 0;
+    m_Stats.TerrainRenderedMeshCellCount = 0;
     m_Stats.TerrainForwardDrawCallCount = 0;
     m_Stats.TerrainShadowDrawCallCount = 0;
     m_Stats.TerrainTileMeshCount = m_TerrainPatchRenderer.GetTileMeshCount();
@@ -34,6 +35,8 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainSkirtIndexCount = m_TerrainPatchRenderer.GetPackedTileSkirtIndexCount();
     m_Stats.TerrainSkirtDepth = m_TerrainPatchRenderer.GetSkirtDepth();
     m_Stats.TerrainSkirtsEnabled = m_TerrainPatchRenderer.GetEnableSkirts();
+    m_Stats.TerrainMinLODSampleStep = m_TerrainPatchRenderer.GetMinLODSampleStep();
+    m_Stats.TerrainMaxLODSampleStep = m_TerrainPatchRenderer.GetMaxLODSampleStep();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
@@ -113,6 +116,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainTriangleCount = m_TerrainPatchRenderer.GetLastRenderedTriangleCount();
     m_Stats.TerrainRenderItemCount = m_RenderQueue.GetQueueCount(RenderQueueType::Opaque);
     m_Stats.TerrainRenderedCellCount = m_TerrainPatchRenderer.GetLastRenderedCellCount();
+    m_Stats.TerrainRenderedMeshCellCount = m_TerrainPatchRenderer.GetLastRenderedMeshCellCount();
     m_Stats.TerrainForwardDrawCallCount = m_TerrainPatchRenderer.GetLastForwardDrawCallCount();
     m_Stats.TerrainShadowDrawCallCount = m_TerrainPatchRenderer.GetLastShadowDrawCallCount();
     m_Stats.TerrainTileMeshCount = m_TerrainPatchRenderer.GetTileMeshCount();
@@ -122,6 +126,8 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainSkirtIndexCount = m_TerrainPatchRenderer.GetPackedTileSkirtIndexCount();
     m_Stats.TerrainSkirtDepth = m_TerrainPatchRenderer.GetSkirtDepth();
     m_Stats.TerrainSkirtsEnabled = m_TerrainPatchRenderer.GetEnableSkirts();
+    m_Stats.TerrainMinLODSampleStep = m_TerrainPatchRenderer.GetMinLODSampleStep();
+    m_Stats.TerrainMaxLODSampleStep = m_TerrainPatchRenderer.GetMaxLODSampleStep();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();

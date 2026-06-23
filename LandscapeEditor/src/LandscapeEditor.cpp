@@ -58,6 +58,8 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Terrain cells: %u", Stats.TerrainCellCount);
         ImGui::Text("Terrain render items: %u", Stats.TerrainRenderItemCount);
         ImGui::Text("Terrain rendered cells: %u", Stats.TerrainRenderedCellCount);
+        ImGui::Text("Terrain rendered mesh cells: %u", Stats.TerrainRenderedMeshCellCount);
+        ImGui::Text("LOD sample step: %u .. %u", Stats.TerrainMinLODSampleStep, Stats.TerrainMaxLODSampleStep);
         ImGui::Text("Terrain draw calls: %u forward / %u shadow", Stats.TerrainForwardDrawCallCount, Stats.TerrainShadowDrawCallCount);
         ImGui::Text("Tile meshes: %u", Stats.TerrainTileMeshCount);
         ImGui::Text("Packed tile vertices: %u", Stats.TerrainPackedVertexCount);

@@ -65,6 +65,7 @@ def main() -> int:
         ("skirt_depth_constant", lambda: require_contains(f("terrain_cpp"), r"SkirtDepth\s*=\s*1\.25f", "fixed terrain skirt depth")),
         ("skirt_generation_helper", lambda: require_contains(f("terrain_cpp"), r"AppendTileSkirts\s*\(.*West.*East.*South.*North", "four-edge tile skirt generation helper")),
         ("skirt_bottom_vertices", lambda: require_contains(f("terrain_cpp"), r"SkirtDepth.*TopPos\.y\s*-\s*SkirtDepth", "skirt bottom vertex offset")),
+        ("skirt_indices_basevertex_relative", lambda: require_contains(f("terrain_cpp"), r"FirstBottomLocalVertex\s*=\s*FirstBottomVertex\s*-\s*BaseVertex.*TopLocalIndices.*BottomA", "skirt indices remain relative to DrawIndexed BaseVertex")),
         ("main_indices_recorded_before_skirts", lambda: require_contains(f("terrain_cpp"), r"Region\.MainNumIndices\s*=.*Region\.FirstIndexLocation.*AppendTileSkirts.*Region\.SkirtIndexCount", "main and skirt index counts recorded separately")),
         ("draw_toggle_uses_main_or_total", lambda: require_contains(f("terrain_cpp"), r"m_EnableSkirts\s*\?\s*Region\.NumIndices\s*:\s*Region\.MainNumIndices", "draw path switches between main-only and skirt-enabled indices")),
         ("terrain_skirt_api", lambda: require_contains(f("terrain_hpp"), r"SetEnableSkirts.*GetEnableSkirts.*GetSkirtDepth.*GetPackedTileSkirtVertexCount.*GetPackedTileSkirtIndexCount", "terrain skirt API and stats")),

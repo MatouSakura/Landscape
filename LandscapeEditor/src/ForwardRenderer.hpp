@@ -26,6 +26,7 @@ struct ForwardRendererStats final
     Uint32 TerrainTriangleCount = 0;
     Uint32 TerrainRenderItemCount = 0;
     Uint32 TerrainRenderedCellCount = 0;
+    Uint32 TerrainRenderedMeshCellCount = 0;
     Uint32 TerrainForwardDrawCallCount = 0;
     Uint32 TerrainShadowDrawCallCount = 0;
     Uint32 TerrainTileMeshCount = 0;
@@ -35,6 +36,8 @@ struct ForwardRendererStats final
     float  TerrainSkirtDepth = 0.0f;
     Uint32 TerrainSkirtVertexCount = 0;
     Uint32 TerrainSkirtIndexCount = 0;
+    Uint32 TerrainMinLODSampleStep = 1;
+    Uint32 TerrainMaxLODSampleStep = 1;
     Uint32 TerrainCellCount   = 0;
     Uint32 TerrainSampleCountPerAxis = 0;
     float  TerrainMinHeight   = 0.0f;

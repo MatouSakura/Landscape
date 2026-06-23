@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <vector>
 
 namespace Diligent
@@ -57,31 +58,38 @@ TerrainDrawRegion BuildTerrainDrawRegion(const TerrainHeightField& HeightField, 
     const Uint32 EndCellZ = std::clamp(MaxCellZ, Region.FirstCellZ + 1u, CellCount);
     Region.CellCountX = EndCellX - Region.FirstCellX;
     Region.CellCountZ = EndCellZ - Region.FirstCellZ;
+    Region.LODSampleStep   = 1;
+    Region.MeshCellCountX  = Region.CellCountX;
+    Region.MeshCellCountZ  = Region.CellCountZ;
+    Region.MeshSampleCountX = Region.CellCountX + 1u;
+    Region.MeshSampleCountZ = Region.CellCountZ + 1u;
     return Region;
 }
 
 Uint32 AppendSkirtEdge(std::vector<TerrainVertex>& Vertices,
                        std::vector<Uint32>&        Indices,
-                       const std::vector<Uint32>&  TopIndices,
+                       Uint32                      BaseVertex,
+                       const std::vector<Uint32>&  TopLocalIndices,
                        const float3&               SkirtNormal,
                        float                       SkirtDepthValue)
 {
     const Uint32 FirstBottomVertex = static_cast<Uint32>(Vertices.size());
-    for (Uint32 TopIndex : TopIndices)
+    const Uint32 FirstBottomLocalVertex = FirstBottomVertex - BaseVertex;
+    for (Uint32 TopLocalIndex : TopLocalIndices)
     {
-        TerrainVertex BottomVertex = Vertices[TopIndex];
+        TerrainVertex BottomVertex = Vertices[BaseVertex + TopLocalIndex];
         const float3   TopPos = BottomVertex.Pos;
         BottomVertex.Pos.y    = TopPos.y - SkirtDepthValue;
         BottomVertex.Normal   = SkirtNormal;
         Vertices.push_back(BottomVertex);
     }
 
-    for (Uint32 Segment = 0; Segment + 1u < TopIndices.size(); ++Segment)
+    for (Uint32 Segment = 0; Segment + 1u < TopLocalIndices.size(); ++Segment)
     {
-        const Uint32 TopA = TopIndices[Segment];
-        const Uint32 TopB = TopIndices[Segment + 1u];
-        const Uint32 BottomA = FirstBottomVertex + Segment;
-        const Uint32 BottomB = FirstBottomVertex + Segment + 1u;
+        const Uint32 TopA = TopLocalIndices[Segment];
+        const Uint32 TopB = TopLocalIndices[Segment + 1u];
+        const Uint32 BottomA = FirstBottomLocalVertex + Segment;
+        const Uint32 BottomB = FirstBottomLocalVertex + Segment + 1u;
 
         Indices.push_back(TopA);
         Indices.push_back(BottomA);
@@ -102,7 +110,7 @@ Uint32 AppendTileSkirts(std::vector<TerrainVertex>& Vertices,
                         float                       SkirtDepthValue)
 {
     auto LocalVertex = [&](Uint32 LocalX, Uint32 LocalZ) {
-        return BaseVertex + LocalZ * SampleCountX + LocalX;
+        return LocalZ * SampleCountX + LocalX;
     };
 
     std::vector<Uint32> West;
@@ -126,11 +134,44 @@ Uint32 AppendTileSkirts(std::vector<TerrainVertex>& Vertices,
     }
 
     Uint32 SkirtVertexCount = 0;
-    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, West,  float3{-1.0f, 0.0f, 0.0f}, SkirtDepthValue);
-    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, East,  float3{+1.0f, 0.0f, 0.0f}, SkirtDepthValue);
-    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, South, float3{0.0f, 0.0f, -1.0f}, SkirtDepthValue);
-    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, North, float3{0.0f, 0.0f, +1.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, BaseVertex, West,  float3{-1.0f, 0.0f, 0.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, BaseVertex, East,  float3{+1.0f, 0.0f, 0.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, BaseVertex, South, float3{0.0f, 0.0f, -1.0f}, SkirtDepthValue);
+    SkirtVertexCount += AppendSkirtEdge(Vertices, Indices, BaseVertex, North, float3{0.0f, 0.0f, +1.0f}, SkirtDepthValue);
     return SkirtVertexCount;
+}
+
+Uint32 GetMaxQuadtreeLevel(const std::vector<TerrainQuadtreeNode>& QuadtreeNodes)
+{
+    Uint32 MaxLevel = 0;
+    for (const TerrainQuadtreeNode& Node : QuadtreeNodes)
+        MaxLevel = std::max(MaxLevel, Node.Level);
+    return MaxLevel;
+}
+
+Uint32 ComputeTerrainLODSampleStep(Uint32 NodeLevel, Uint32 MaxQuadtreeLevel)
+{
+    if (NodeLevel >= MaxQuadtreeLevel)
+        return 1u;
+
+    const Uint32 Shift = MaxQuadtreeLevel - NodeLevel;
+    return 1u << Shift;
+}
+
+std::vector<Uint32> BuildSampledCellCoordinates(Uint32 FirstCell, Uint32 CellCount, Uint32 LODSampleStep)
+{
+    std::vector<Uint32> Cells;
+    const Uint32        EndCell = FirstCell + CellCount;
+    const Uint32        Step    = std::max(LODSampleStep, 1u);
+
+    Cells.push_back(FirstCell);
+    for (Uint32 Cell = FirstCell + Step; Cell < EndCell; Cell += Step)
+        Cells.push_back(Cell);
+
+    if (Cells.back() != EndCell)
+        Cells.push_back(EndCell);
+
+    return Cells;
 }
 
 static const char* TerrainVS = R"(
@@ -484,6 +525,7 @@ TerrainDrawRegion TerrainPatchRenderer::BuildDrawRegion(const TerrainQuadtreeNod
 void TerrainPatchRenderer::BeginFrameStats()
 {
     m_LastRenderedCellCount    = 0;
+    m_LastRenderedMeshCellCount = 0;
     m_LastRenderedIndexCount   = 0;
     m_LastForwardDrawCallCount = 0;
     m_LastShadowDrawCallCount  = 0;
@@ -497,29 +539,40 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
     m_TileMeshRanges.resize(QuadtreeNodes.size());
     m_PackedTileSkirtVertexCount = 0;
     m_PackedTileSkirtIndexCount  = 0;
+    m_MinLODSampleStep = QuadtreeNodes.empty() ? 1u : std::numeric_limits<Uint32>::max();
+    m_MaxLODSampleStep = 1;
 
     const Uint32 TerrainCellCount = m_HeightField.GetCellCount();
     const float  CellSize = TerrainCellCount > 0 ? (2.0f * m_TerrainExtent) / static_cast<float>(TerrainCellCount) : 0.0f;
+    const Uint32 MaxQuadtreeLevel = GetMaxQuadtreeLevel(QuadtreeNodes);
 
     for (const TerrainQuadtreeNode& Node : QuadtreeNodes)
     {
         TerrainDrawRegion Region = BuildTerrainDrawRegion(m_HeightField, m_TerrainExtent, Node);
+        Region.LODSampleStep = ComputeTerrainLODSampleStep(Node.Level, MaxQuadtreeLevel);
         Region.BaseVertex         = static_cast<Uint32>(Vertices.size());
         Region.FirstIndexLocation = static_cast<Uint32>(Indices.size());
 
-        const Uint32 SampleCountX = Region.CellCountX + 1u;
-        const Uint32 SampleCountZ = Region.CellCountZ + 1u;
-        Vertices.reserve(Vertices.size() + SampleCountX * SampleCountZ);
-        Indices.reserve(Indices.size() + Region.CellCountX * Region.CellCountZ * 6u);
+        const std::vector<Uint32> SampleCellXs = BuildSampledCellCoordinates(Region.FirstCellX, Region.CellCountX, Region.LODSampleStep);
+        const std::vector<Uint32> SampleCellZs = BuildSampledCellCoordinates(Region.FirstCellZ, Region.CellCountZ, Region.LODSampleStep);
+        Region.MeshSampleCountX = static_cast<Uint32>(SampleCellXs.size());
+        Region.MeshSampleCountZ = static_cast<Uint32>(SampleCellZs.size());
+        Region.MeshCellCountX = Region.MeshSampleCountX > 0 ? Region.MeshSampleCountX - 1u : 0u;
+        Region.MeshCellCountZ = Region.MeshSampleCountZ > 0 ? Region.MeshSampleCountZ - 1u : 0u;
 
-        for (Uint32 LocalZ = 0; LocalZ < SampleCountZ; ++LocalZ)
+        const Uint32 SampleCountX = Region.MeshSampleCountX;
+        const Uint32 SampleCountZ = Region.MeshSampleCountZ;
+        Vertices.reserve(Vertices.size() + SampleCountX * SampleCountZ);
+        Indices.reserve(Indices.size() + Region.MeshCellCountX * Region.MeshCellCountZ * 6u);
+        m_MinLODSampleStep = std::min(m_MinLODSampleStep, Region.LODSampleStep);
+        m_MaxLODSampleStep = std::max(m_MaxLODSampleStep, Region.LODSampleStep);
+
+        for (Uint32 SampleZ : SampleCellZs)
         {
-            const Uint32 SampleZ = Region.FirstCellZ + LocalZ;
-            const float  WorldZ  = -m_TerrainExtent + CellSize * static_cast<float>(SampleZ);
-            for (Uint32 LocalX = 0; LocalX < SampleCountX; ++LocalX)
+            const float WorldZ = -m_TerrainExtent + CellSize * static_cast<float>(SampleZ);
+            for (Uint32 SampleX : SampleCellXs)
             {
-                const Uint32 SampleX = Region.FirstCellX + LocalX;
-                const float  WorldX  = -m_TerrainExtent + CellSize * static_cast<float>(SampleX);
+                const float WorldX = -m_TerrainExtent + CellSize * static_cast<float>(SampleX);
                 Vertices.push_back(TerrainVertex{
                     float3{WorldX, m_HeightField.GetHeight(SampleX, SampleZ), WorldZ},
                     m_HeightField.GetNormal(SampleX, SampleZ),
@@ -528,9 +581,9 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
         }
 
         const Uint32 LocalRowStride = SampleCountX;
-        for (Uint32 LocalZ = 0; LocalZ < Region.CellCountZ; ++LocalZ)
+        for (Uint32 LocalZ = 0; LocalZ < Region.MeshCellCountZ; ++LocalZ)
         {
-            for (Uint32 LocalX = 0; LocalX < Region.CellCountX; ++LocalX)
+            for (Uint32 LocalX = 0; LocalX < Region.MeshCellCountX; ++LocalX)
             {
                 const Uint32 LocalI0 = LocalZ * LocalRowStride + LocalX;
                 const Uint32 LocalI1 = LocalI0 + 1u;
@@ -561,6 +614,9 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
         if (Node.NodeIndex < m_TileMeshRanges.size())
             m_TileMeshRanges[Node.NodeIndex] = Range;
     }
+
+    if (m_MinLODSampleStep == std::numeric_limits<Uint32>::max())
+        m_MinLODSampleStep = 1;
 
     m_PackedTileVertexCount = static_cast<Uint32>(Vertices.size());
     m_PackedTileIndexCount  = static_cast<Uint32>(Indices.size());
@@ -634,6 +690,7 @@ void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& Vi
     DrawTileMeshIndexed(pContext, Region);
     m_LastForwardDrawCallCount += Region.NumIndices > 0 ? 1u : 0u;
     m_LastRenderedCellCount += Region.CellCountX * Region.CellCountZ;
+    m_LastRenderedMeshCellCount += Region.MeshCellCountX * Region.MeshCellCountZ;
     m_LastRenderedIndexCount += m_EnableSkirts ? Region.NumIndices : Region.MainNumIndices;
 }
 

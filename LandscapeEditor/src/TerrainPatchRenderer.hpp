@@ -42,6 +42,7 @@ public:
     Uint32 GetTriangleCount() const { return m_IndexCount / 3u; }
     Uint32 GetLastRenderedTriangleCount() const { return m_LastRenderedIndexCount / 3u; }
     Uint32 GetLastRenderedCellCount() const { return m_LastRenderedCellCount; }
+    Uint32 GetLastRenderedMeshCellCount() const { return m_LastRenderedMeshCellCount; }
     Uint32 GetLastForwardDrawCallCount() const { return m_LastForwardDrawCallCount; }
     Uint32 GetLastShadowDrawCallCount() const { return m_LastShadowDrawCallCount; }
     Uint32 GetTileMeshCount() const { return static_cast<Uint32>(m_TileMeshRanges.size()); }
@@ -49,6 +50,8 @@ public:
     Uint32 GetPackedTileIndexCount() const { return m_PackedTileIndexCount; }
     Uint32 GetPackedTileSkirtVertexCount() const { return m_PackedTileSkirtVertexCount; }
     Uint32 GetPackedTileSkirtIndexCount() const { return m_PackedTileSkirtIndexCount; }
+    Uint32 GetMinLODSampleStep() const { return m_MinLODSampleStep; }
+    Uint32 GetMaxLODSampleStep() const { return m_MaxLODSampleStep; }
     Uint32 GetCellCount() const { return m_HeightField.GetCellCount(); }
     Uint32 GetSampleCountPerAxis() const { return m_HeightField.GetSampleCountPerAxis(); }
     float  GetMinHeight() const { return m_HeightField.GetStats().MinHeight; }
@@ -70,6 +73,7 @@ private:
     RefCntAutoPtr<IShaderResourceBinding> m_pShadowSRB;
     Uint32                                m_IndexCount = 0;
     Uint32                                m_LastRenderedCellCount = 0;
+    Uint32                                m_LastRenderedMeshCellCount = 0;
     Uint32                                m_LastRenderedIndexCount = 0;
     Uint32                                m_LastForwardDrawCallCount = 0;
     Uint32                                m_LastShadowDrawCallCount = 0;
@@ -77,6 +81,8 @@ private:
     Uint32                                m_PackedTileIndexCount = 0;
     Uint32                                m_PackedTileSkirtVertexCount = 0;
     Uint32                                m_PackedTileSkirtIndexCount = 0;
+    Uint32                                m_MinLODSampleStep = 1;
+    Uint32                                m_MaxLODSampleStep = 1;
     float                                 m_TerrainExtent = 20.0f;
     float                                 m_SkirtDepth = 1.25f;
     bool                                  m_EnableSkirts = true;
