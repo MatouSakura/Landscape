@@ -43,6 +43,7 @@ private:
     bool                 m_ShowLODTransitionOverlay = true;
     bool                 m_EnableTerrainSkirts = true;
     bool                 m_EnableTerrainFrustumCulling = true;
+    bool                 m_EnableTerrainLODIndexStitching = true;
     float                m_TerrainLODDistanceScale = 2.2f;
     int                  m_TerrainMaxSelectedLODLevel = 4;
     LandscapeCameraPreset m_CameraPreset = LandscapeCameraPreset::Default;

@@ -40,6 +40,21 @@ void UpdateSideRatio(TerrainLODStitchedDrawRegion& Region, TerrainLODSeamSide Si
     }
 }
 
+Uint32 CountStitchedCorners(TerrainLODStitchEdgeMask EdgeMask)
+{
+    const bool StitchWest  = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::West);
+    const bool StitchEast  = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::East);
+    const bool StitchSouth = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::South);
+    const bool StitchNorth = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::North);
+
+    Uint32 CornerCount = 0;
+    CornerCount += StitchWest && StitchSouth ? 1u : 0u;
+    CornerCount += StitchWest && StitchNorth ? 1u : 0u;
+    CornerCount += StitchEast && StitchSouth ? 1u : 0u;
+    CornerCount += StitchEast && StitchNorth ? 1u : 0u;
+    return CornerCount;
+}
+
 } // namespace
 
 TerrainLODStitchEdgeMask operator|(TerrainLODStitchEdgeMask Lhs, TerrainLODStitchEdgeMask Rhs)
@@ -91,6 +106,8 @@ void TerrainLODIndexStitching::Build(const std::vector<TerrainQuadtreeNode>& Nod
     }
 
     m_Stats.StitchedNodeCount = static_cast<Uint32>(m_Regions.size());
+    for (const TerrainLODStitchedDrawRegion& Region : m_Regions)
+        m_Stats.StitchedCornerCount += CountStitchedCorners(Region.EdgeMask);
 }
 
 const TerrainLODStitchedDrawRegion* TerrainLODIndexStitching::FindRegion(Uint32 NodeIndex) const
@@ -111,9 +128,10 @@ TerrainLODStitchedDrawRegion* TerrainLODIndexStitching::FindRegion(Uint32 NodeIn
     return RegionIndex < m_Regions.size() ? &m_Regions[RegionIndex] : nullptr;
 }
 
-void TerrainLODIndexStitching::SetGeneratedIndexStats(Uint32 GeneratedIndexCount)
+void TerrainLODIndexStitching::SetGeneratedIndexStats(Uint32 GeneratedIndexCount, Uint32 CornerPatchIndexCount)
 {
     m_Stats.GeneratedIndexCount = GeneratedIndexCount;
+    m_Stats.CornerPatchIndexCount = CornerPatchIndexCount;
 }
 
 TerrainLODStitchedDrawRegion& TerrainLODIndexStitching::FindOrAddRegion(Uint32 NodeIndex)

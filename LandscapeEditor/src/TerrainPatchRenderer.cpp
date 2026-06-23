@@ -174,9 +174,26 @@ std::vector<Uint32> BuildStitchStops(Uint32 SampleCount, Uint32 StitchRatio)
     return Stops;
 }
 
+std::vector<Uint32> BuildStitchStops(Uint32 StartSample, Uint32 EndSample, Uint32 StitchRatio)
+{
+    std::vector<Uint32> Stops;
+    if (StartSample >= EndSample)
+        return Stops;
+
+    const Uint32 Step = std::max(StitchRatio, 1u);
+    Stops.push_back(StartSample);
+    for (Uint32 Sample = StartSample + Step; Sample < EndSample; Sample += Step)
+        Stops.push_back(Sample);
+    if (Stops.back() != EndSample)
+        Stops.push_back(EndSample);
+    return Stops;
+}
+
 void AppendStitchedEdgeBand(std::vector<Uint32>& Indices,
                             const TerrainDrawRegion& Region,
                             TerrainLODStitchEdgeMask Edge,
+                            Uint32 StartSample,
+                            Uint32 EndSample,
                             Uint32 StitchRatio)
 {
     if (Region.MeshSampleCountX < 2u || Region.MeshSampleCountZ < 2u)
@@ -188,7 +205,8 @@ void AppendStitchedEdgeBand(std::vector<Uint32>& Indices,
 
     const bool VerticalEdge = Edge == TerrainLODStitchEdgeMask::West || Edge == TerrainLODStitchEdgeMask::East;
     const Uint32 SampleCount = VerticalEdge ? Region.MeshSampleCountZ : Region.MeshSampleCountX;
-    const std::vector<Uint32> Stops = BuildStitchStops(SampleCount, StitchRatio);
+    EndSample = std::min(EndSample, SampleCount > 0 ? SampleCount - 1u : 0u);
+    const std::vector<Uint32> Stops = BuildStitchStops(StartSample, EndSample, StitchRatio);
     if (Stops.size() < 2u)
         return;
 
@@ -232,10 +250,39 @@ void AppendStitchedEdgeBand(std::vector<Uint32>& Indices,
     }
 }
 
+void AppendStitchedCornerPatch(std::vector<Uint32>& Indices,
+                               const TerrainDrawRegion& Region,
+                               bool StitchWest,
+                               bool StitchEast,
+                               bool StitchSouth,
+                               bool StitchNorth,
+                               Uint32& CornerPatchIndexCount)
+{
+    const Uint32 FirstCornerPatchIndex = static_cast<Uint32>(Indices.size());
+
+    if (Region.MeshCellCountX > 0u && Region.MeshCellCountZ > 0u)
+    {
+        if (StitchWest && StitchSouth)
+            AppendSurfaceCell(Indices, Region.MeshSampleCountX, 0, 0);
+        if (StitchWest && StitchNorth)
+            AppendSurfaceCell(Indices, Region.MeshSampleCountX, 0, Region.MeshCellCountZ - 1u);
+        if (StitchEast && StitchSouth)
+            AppendSurfaceCell(Indices, Region.MeshSampleCountX, Region.MeshCellCountX - 1u, 0);
+        if (StitchEast && StitchNorth)
+            AppendSurfaceCell(Indices, Region.MeshSampleCountX, Region.MeshCellCountX - 1u, Region.MeshCellCountZ - 1u);
+    }
+
+    CornerPatchIndexCount += static_cast<Uint32>(Indices.size()) - FirstCornerPatchIndex;
+}
+
 void AppendStitchedSurfaceIndices(std::vector<Uint32>& Indices,
                                   const TerrainDrawRegion& Region,
-                                  const TerrainLODStitchedDrawRegion& StitchedRegion)
+                                  const TerrainLODStitchedDrawRegion& StitchedRegion,
+                                  Uint32& CornerPatchIndexCount)
 {
+    if (Region.MeshSampleCountX < 2u || Region.MeshSampleCountZ < 2u)
+        return;
+
     const TerrainLODStitchEdgeMask EdgeMask = StitchedRegion.EdgeMask;
     const bool StitchWest  = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::West);
     const bool StitchEast  = HasTerrainLODStitchEdge(EdgeMask, TerrainLODStitchEdgeMask::East);
@@ -256,14 +303,21 @@ void AppendStitchedSurfaceIndices(std::vector<Uint32>& Indices,
         }
     }
 
+    const Uint32 VerticalStartSample = StitchSouth ? 1u : 0u;
+    const Uint32 VerticalEndSample = Region.MeshSampleCountZ - 1u - (StitchNorth ? 1u : 0u);
+    const Uint32 HorizontalStartSample = StitchWest ? 1u : 0u;
+    const Uint32 HorizontalEndSample = Region.MeshSampleCountX - 1u - (StitchEast ? 1u : 0u);
+
     if (StitchWest)
-        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::West, StitchedRegion.WestStitchRatio);
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::West, VerticalStartSample, VerticalEndSample, StitchedRegion.WestStitchRatio);
     if (StitchEast)
-        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::East, StitchedRegion.EastStitchRatio);
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::East, VerticalStartSample, VerticalEndSample, StitchedRegion.EastStitchRatio);
     if (StitchSouth)
-        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::South, StitchedRegion.SouthStitchRatio);
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::South, HorizontalStartSample, HorizontalEndSample, StitchedRegion.SouthStitchRatio);
     if (StitchNorth)
-        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::North, StitchedRegion.NorthStitchRatio);
+        AppendStitchedEdgeBand(Indices, Region, TerrainLODStitchEdgeMask::North, HorizontalStartSample, HorizontalEndSample, StitchedRegion.NorthStitchRatio);
+
+    AppendStitchedCornerPatch(Indices, Region, StitchWest, StitchEast, StitchSouth, StitchNorth, CornerPatchIndexCount);
 }
 
 void AppendSkirtEdgeIndices(std::vector<Uint32>&       Indices,
@@ -852,6 +906,7 @@ void TerrainPatchRenderer::PrepareLODIndexStitching(IDeviceContext* pContext, Te
 {
     std::vector<Uint32> Indices;
     Indices.reserve(m_StitchedIndexBufferCapacity);
+    Uint32 CornerPatchIndexCount = 0;
 
     for (TerrainLODStitchedDrawRegion& StitchedRegion : Stitching.GetRegions())
     {
@@ -860,7 +915,7 @@ void TerrainPatchRenderer::PrepareLODIndexStitching(IDeviceContext* pContext, Te
 
         const TerrainDrawRegion& Region = m_TileMeshRanges[StitchedRegion.NodeIndex].Region;
         StitchedRegion.FirstIndexLocation = static_cast<Uint32>(Indices.size());
-        AppendStitchedSurfaceIndices(Indices, Region, StitchedRegion);
+        AppendStitchedSurfaceIndices(Indices, Region, StitchedRegion, CornerPatchIndexCount);
         StitchedRegion.MainNumIndices = static_cast<Uint32>(Indices.size()) - StitchedRegion.FirstIndexLocation;
         AppendTileSkirtIndices(Indices, Region.MeshSampleCountX, Region.MeshSampleCountZ);
         StitchedRegion.NumIndices = static_cast<Uint32>(Indices.size()) - StitchedRegion.FirstIndexLocation;
@@ -873,7 +928,7 @@ void TerrainPatchRenderer::PrepareLODIndexStitching(IDeviceContext* pContext, Te
         std::memcpy(MappedIndices, Indices.data(), Indices.size() * sizeof(Uint32));
     }
 
-    Stitching.SetGeneratedIndexStats(static_cast<Uint32>(Indices.size()));
+    Stitching.SetGeneratedIndexStats(static_cast<Uint32>(Indices.size()), CornerPatchIndexCount);
 }
 
 void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainDrawRegion& Region, ITextureView* pShadowMapSRV)

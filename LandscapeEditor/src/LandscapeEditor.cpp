@@ -55,6 +55,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
     m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
     m_ForwardRenderer.SetTerrainFrustumCullingEnabled(m_EnableTerrainFrustumCulling);
+    m_ForwardRenderer.SetTerrainLODIndexStitchingEnabled(m_EnableTerrainLODIndexStitching);
     m_ForwardRenderer.SetTerrainLODDistanceScale(m_TerrainLODDistanceScale);
     m_ForwardRenderer.SetTerrainMaxSelectedLODLevel(static_cast<Uint32>(m_TerrainMaxSelectedLODLevel));
     UpdateRenderView();
@@ -139,8 +140,12 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("LOD stitching seams: %u", Stats.TerrainLODStitchingSeamEdgeCount);
         ImGui::Text("LOD stitching max delta: %u, ratio: %u", Stats.TerrainLODStitchingMaxDelta, Stats.TerrainLODStitchingMaxRatio);
         ImGui::Text("LOD stitching length: %.2f", Stats.TerrainLODStitchingTotalLength);
+        if (ImGui::Checkbox("Enable LOD index stitching", &m_EnableTerrainLODIndexStitching))
+            m_ForwardRenderer.SetTerrainLODIndexStitchingEnabled(m_EnableTerrainLODIndexStitching);
         ImGui::Text("LOD index stitched nodes: %u, edges: %u", Stats.TerrainLODIndexStitchingNodeCount, Stats.TerrainLODIndexStitchingEdgeCount);
+        ImGui::Text("LOD index stitched corners: %u", Stats.TerrainLODIndexStitchingCornerCount);
         ImGui::Text("LOD index stitched indices: %u, ratio: %u", Stats.TerrainLODIndexStitchingIndexCount, Stats.TerrainLODIndexStitchingMaxRatio);
+        ImGui::Text("LOD index corner indices: %u", Stats.TerrainLODIndexStitchingCornerIndexCount);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Sky passes: %u", Stats.SkyPassCount);

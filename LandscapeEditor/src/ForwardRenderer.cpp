@@ -93,7 +93,9 @@ void UpdateTerrainLODIndexStitchingStats(const TerrainLODIndexStitching& Stitchi
     const TerrainLODIndexStitchingStats& StitchingStats = Stitching.GetStats();
     Stats.TerrainLODIndexStitchingNodeCount = StitchingStats.StitchedNodeCount;
     Stats.TerrainLODIndexStitchingEdgeCount = StitchingStats.StitchedEdgeCount;
+    Stats.TerrainLODIndexStitchingCornerCount = StitchingStats.StitchedCornerCount;
     Stats.TerrainLODIndexStitchingIndexCount = StitchingStats.GeneratedIndexCount;
+    Stats.TerrainLODIndexStitchingCornerIndexCount = StitchingStats.CornerPatchIndexCount;
     Stats.TerrainLODIndexStitchingMaxRatio = StitchingStats.MaxStitchRatio;
 }
 
@@ -170,6 +172,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     UpdateTerrainComponentLODStats(m_TerrainQuadtree, m_TerrainQuadtreeSelection, m_Stats);
     UpdateTerrainLODStitchingStats(m_TerrainLODStitching, m_Stats);
     UpdateTerrainLODIndexStitchingStats(m_TerrainLODIndexStitching, m_Stats);
+    m_Stats.TerrainLODIndexStitchingEnabled = m_EnableTerrainLODIndexStitching;
     const auto& InitialDebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = InitialDebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = InitialDebugStats.SkirtEdgeCount;
@@ -193,8 +196,16 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
                                  m_EnableTerrainFrustumCulling,
                                  m_VisibleTerrainQuadtreeSelection);
     m_TerrainLODStitching.Build(QuadtreeNodes, m_VisibleTerrainQuadtreeSelection);
-    m_TerrainLODIndexStitching.Build(QuadtreeNodes, m_VisibleTerrainQuadtreeSelection, m_TerrainLODStitching);
-    m_TerrainPatchRenderer.PrepareLODIndexStitching(pContext, m_TerrainLODIndexStitching);
+    if (m_EnableTerrainLODIndexStitching)
+    {
+        m_TerrainLODIndexStitching.Build(QuadtreeNodes, m_VisibleTerrainQuadtreeSelection, m_TerrainLODStitching);
+        m_TerrainPatchRenderer.PrepareLODIndexStitching(pContext, m_TerrainLODIndexStitching);
+    }
+    else
+    {
+        TerrainQuadtreeSelection EmptySelection;
+        m_TerrainLODIndexStitching.Build(QuadtreeNodes, EmptySelection, m_TerrainLODStitching);
+    }
 
     m_RenderQueue.Clear();
     for (Uint32 NodeIndex : m_VisibleTerrainQuadtreeSelection.SelectedNodeIndices)
@@ -202,7 +213,8 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
         if (NodeIndex < QuadtreeNodes.size())
         {
             TerrainDrawRegion Region = m_TerrainPatchRenderer.BuildDrawRegion(QuadtreeNodes[NodeIndex]);
-            ApplyLODIndexStitching(Region, m_TerrainLODIndexStitching);
+            if (m_EnableTerrainLODIndexStitching)
+                ApplyLODIndexStitching(Region, m_TerrainLODIndexStitching);
             m_RenderQueue.AddTerrainLeaf(Region);
         }
     }
@@ -285,6 +297,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     UpdateTerrainComponentLODStats(m_TerrainQuadtree, m_VisibleTerrainQuadtreeSelection, m_Stats);
     UpdateTerrainLODStitchingStats(m_TerrainLODStitching, m_Stats);
     UpdateTerrainLODIndexStitchingStats(m_TerrainLODIndexStitching, m_Stats);
+    m_Stats.TerrainLODIndexStitchingEnabled = m_EnableTerrainLODIndexStitching;
     const auto& DebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = DebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = DebugStats.SkirtEdgeCount;

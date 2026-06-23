@@ -74,9 +74,12 @@ struct ForwardRendererStats final
     Uint32 TerrainLODStitchingMaxDelta = 0;
     Uint32 TerrainLODStitchingMaxRatio = 1;
     float  TerrainLODStitchingTotalLength = 0.0f;
+    bool   TerrainLODIndexStitchingEnabled = true;
     Uint32 TerrainLODIndexStitchingNodeCount = 0;
     Uint32 TerrainLODIndexStitchingEdgeCount = 0;
+    Uint32 TerrainLODIndexStitchingCornerCount = 0;
     Uint32 TerrainLODIndexStitchingIndexCount = 0;
+    Uint32 TerrainLODIndexStitchingCornerIndexCount = 0;
     Uint32 TerrainLODIndexStitchingMaxRatio = 1;
     Uint32 PostProcessPassCount = 0;
     size_t PSOCount           = 0;
@@ -102,6 +105,8 @@ public:
     float GetTerrainLODDistanceScale() const { return m_TerrainQuadtree.GetLODPolicy().SplitDistanceScale; }
     void SetTerrainMaxSelectedLODLevel(Uint32 Level);
     Uint32 GetTerrainMaxSelectedLODLevel() const { return m_TerrainQuadtree.GetLODPolicy().MaxSelectedLevel; }
+    void SetTerrainLODIndexStitchingEnabled(bool Enable) { m_EnableTerrainLODIndexStitching = Enable; }
+    bool GetTerrainLODIndexStitchingEnabled() const { return m_EnableTerrainLODIndexStitching; }
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;
@@ -122,6 +127,7 @@ private:
     ISwapChain*           m_pSwapChain = nullptr;
     bool                  m_ShowQuadtreeOverlay = true;
     bool                  m_EnableTerrainFrustumCulling = true;
+    bool                  m_EnableTerrainLODIndexStitching = true;
 };
 
 } // namespace Diligent

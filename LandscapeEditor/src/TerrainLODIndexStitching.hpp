@@ -39,7 +39,9 @@ struct TerrainLODIndexStitchingStats final
 {
     Uint32 StitchedNodeCount  = 0;
     Uint32 StitchedEdgeCount  = 0;
+    Uint32 StitchedCornerCount = 0;
     Uint32 GeneratedIndexCount = 0;
+    Uint32 CornerPatchIndexCount = 0;
     Uint32 MaxStitchRatio     = 1;
 };
 
@@ -56,7 +58,7 @@ public:
     std::vector<TerrainLODStitchedDrawRegion>& GetRegions() { return m_Regions; }
     const TerrainLODIndexStitchingStats& GetStats() const { return m_Stats; }
 
-    void SetGeneratedIndexStats(Uint32 GeneratedIndexCount);
+    void SetGeneratedIndexStats(Uint32 GeneratedIndexCount, Uint32 CornerPatchIndexCount);
 
 private:
     TerrainLODStitchedDrawRegion& FindOrAddRegion(Uint32 NodeIndex);

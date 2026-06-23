@@ -90,6 +90,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-lod-stitching-seam-plan.md`
 - Added the LOD index stitching v1 implementation record:
   `docs/superpowers/plans/2026-06-23-lod-index-stitching-v1.md`
+- Added the LOD index stitching corner hardening implementation record:
+  `docs/superpowers/plans/2026-06-23-lod-index-stitching-corner-hardening.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -182,6 +184,9 @@ Current implementation:
 - Draws stitched fine-edge terrain through a dynamic index buffer while preserving the existing packed immutable terrain vertex buffer.
 - Uses stitched index regions for both forward terrain and shadow depth terrain draws.
 - Exposes LOD index stitched node count, stitched edge count, generated index count, and max stitch ratio in ImGui.
+- Clips stitched edge bands when two stitched terrain edges meet at a corner, then fills each stitched corner once with corner patch indices.
+- Exposes LOD index stitched corner count, corner patch index count, and an `Enable LOD index stitching` comparison toggle in ImGui.
+- Allows stitched-index terrain rendering to be disabled at runtime while keeping skirts and seam diagnostics visible for comparison.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
@@ -514,6 +519,25 @@ LOD index stitching v1 validation completed on 2026-06-23:
 - Visual check: D3D12 `mixed_lod` remains side-biased and keeps terrain plus selected leaf and seam overlay lines visible while stitched index regions are active.
 - Implementation note: this is the first real index-stitching draw path. It replaces fine tile edge bands with dynamic fan indices for fine/coarse seams while leaving corner overlap hardening and optional shader morphing for later.
 
+LOD index stitching corner hardening validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_lod_index_stitching_corners.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-lod-corner-hardening-d3d12\landscape_lod_corner_hardening_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-lod-corner-hardening-vk\landscape_lod_corner_hardening_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-lod-corner-hardening-d3d11\landscape_lod_corner_hardening_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-lod-corner-hardening-gl\landscape_lod_corner_hardening_gl.png`
+  - D3D12 `mixed_lod`: `build\Win64-vs18\smoke-lod-corner-hardening-mixed-d3d12\landscape_lod_corner_hardening_mixed_d3d12.png`
+- Pixel check:
+  - D3D12: `640x480`, `non_dark=307200`, `ground_like=236192`, `grid_like=222801`, `cyan_like=3894`, `orange_like=1603`, `std_sum=38.56`.
+  - Vulkan: `640x480`, `non_dark=307200`, `ground_like=236192`, `grid_like=222801`, `cyan_like=3894`, `orange_like=1603`, `std_sum=38.56`.
+  - D3D11: `640x480`, `non_dark=307200`, `ground_like=236192`, `grid_like=222801`, `cyan_like=3894`, `orange_like=1603`, `std_sum=38.56`.
+  - OpenGL: `640x480`, `non_dark=307200`, `ground_like=194231`, `grid_like=289532`, `cyan_like=2646`, `orange_like=772`, `std_sum=48.52`.
+  - D3D12 `mixed_lod`: `640x480`, `non_dark=307200`, `ground_like=64310`, `grid_like=240730`, `cyan_like=1268`, `orange_like=455`, `std_sum=32.12`.
+- Implementation note: corner-hardening removes duplicate edge-band corner coverage by clipping stitched edge bands and adding one corner patch per stitched corner. Shader morph comparison remains a later option.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -626,7 +650,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add UE-style component LOD policy controls so near selected leaves stay fine and far selected leaves can remain larger.
 - Done: Add neighbor-aware LOD stitching seam plan metadata for mixed-resolution selected leaves.
 - Done: Convert seam metadata into dynamic LOD index stitching v1 for selected fine/coarse leaf neighbors.
-- Later: Add corner-aware stitching hardening and optional shader morphing.
+- Done: Harden LOD index stitching corners and add a stitched-index comparison toggle.
+- Later: Compare the stitched-index path against optional shader morphing.
 
 ### Phase 4: LOD Crack Fixing
 
@@ -635,7 +660,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add diagnostics for level boundaries and skirt visibility.
 - Done: Build first formal LOD stitching seam plan for mixed-level leaf neighbors.
 - Done: Convert seam plan into actual dynamic stitched edge indices for fine/coarse selected leaf boundaries.
-- Next: Harden corner cases where two stitched edges meet and compare against shader morphing.
+- Done: Harden corner cases where two stitched edges meet and add a toggle to compare stitched-index rendering with skirt-only rendering.
+- Next: Add shader morph comparison captures or start external heightmap loading.
 - Verify transitions while moving the camera.
 
 ### Phase 5: Terrain Materials
@@ -821,8 +847,8 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Harden LOD index stitching corner cases and add a visual/debug mode to compare stitched indices against skirt-only rendering.
-2. Add external heightmap loading for one fixed terrain patch.
+1. Add shader morph comparison captures for LOD transitions, or start external heightmap loading for one fixed terrain patch.
+2. Keep validating stitched-index LOD transitions while moving the camera.
 3. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 
 ## Notes
