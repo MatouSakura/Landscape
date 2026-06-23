@@ -25,6 +25,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
     m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);
     m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
+    m_ForwardRenderer.SetTerrainFrustumCullingEnabled(m_EnableTerrainFrustumCulling);
     UpdateRenderView();
 }
 
@@ -82,6 +83,11 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
             m_ForwardRenderer.SetShowLODTransitionOverlay(m_ShowLODTransitionOverlay);
         ImGui::Text("Quadtree nodes: %u", Stats.TerrainQuadtreeNodeCount);
         ImGui::Text("Selected leaves: %u", Stats.TerrainQuadtreeSelectedLeafCount);
+        if (ImGui::Checkbox("Enable terrain frustum culling", &m_EnableTerrainFrustumCulling))
+            m_ForwardRenderer.SetTerrainFrustumCullingEnabled(m_EnableTerrainFrustumCulling);
+        ImGui::Text("Candidate leaves: %u", Stats.TerrainQuadtreeCandidateLeafCount);
+        ImGui::Text("Visible leaves: %u", Stats.TerrainQuadtreeVisibleLeafCount);
+        ImGui::Text("Frustum culled leaves: %u", Stats.TerrainFrustumCulledLeafCount);
         ImGui::Text("Max quadtree depth: %u", Stats.TerrainQuadtreeMaxDepth);
         ImGui::Text("Max selected LOD: %u", Stats.TerrainQuadtreeMaxSelectedLevel);
         ImGui::Text("Debug leaf bound lines: %u", Stats.TerrainDebugLeafBoundLineCount);

@@ -32,6 +32,7 @@ private:
     bool                 m_ShowSkirtEdgeOverlay = true;
     bool                 m_ShowLODTransitionOverlay = true;
     bool                 m_EnableTerrainSkirts = true;
+    bool                 m_EnableTerrainFrustumCulling = true;
 };
 
 } // namespace Diligent

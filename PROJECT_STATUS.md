@@ -80,6 +80,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-lod-tile-sampling.md`
 - Added the LOD transition diagnostics implementation plan:
   `docs/superpowers/plans/2026-06-23-lod-transition-diagnostics.md`
+- Added the terrain frustum culling implementation plan:
+  `docs/superpowers/plans/2026-06-23-terrain-frustum-culling.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -159,10 +161,12 @@ Current implementation:
 - Tracks rendered mesh cell count separately from covered terrain cell count, plus min/max LOD sample step in ImGui.
 - Adds LOD transition diagnostics for quadtree debug overlay: selected leaf bounds, cyan skirt edges, and mixed-level transition edges.
 - Tracks debug leaf bound lines, skirt edge count, LOD transition edge count, and debug line vertex count in ImGui.
+- Adds CPU frustum culling for selected terrain leaves before render queue submission and debug overlay generation.
+- Tracks terrain frustum culling enabled state, candidate leaf count, visible leaf count, and culled leaf count in ImGui.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
-- Keeps external heightmap loading, LOD crack fixing, frustum culling, full cascade selection/stabilization, and production terrain materials deferred until the terrain data model is expanded.
+- Keeps external heightmap loading, full cascade selection/stabilization, GPU culling, indirect draw, and production terrain materials deferred until the terrain data model is expanded.
 
 Validation completed on 2026-06-22:
 
@@ -349,6 +353,31 @@ LOD transition diagnostics validation completed on 2026-06-23:
 - Visual check: D3D12 capture shows cyan skirt edge diagnostics in addition to the existing selected leaf bounds.
 - Implementation note: transition edge detection is CPU-side and compares selected leaf bounds pairwise for shared edge overlap with different LOD levels. The current default capture has no red transition pixels from its camera position, but the overlay path and counters are wired for mixed-level selections.
 
+Terrain frustum culling validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+  - `tools\verify_landscape_selected_leaf_render_items.py`
+  - `tools\verify_landscape_packed_tile_mesh_cache.py`
+  - `tools\verify_landscape_tile_skirts.py`
+  - `tools\verify_landscape_lod_tile_sampling.py`
+  - `tools\verify_landscape_lod_transition_diagnostics.py`
+  - `tools\verify_landscape_frustum_culling.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-frustum-culling-d3d12\landscape_frustum_culling_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-frustum-culling-vk\landscape_frustum_culling_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-frustum-culling-d3d11\landscape_frustum_culling_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-frustum-culling-gl\landscape_frustum_culling_gl.png`
+- Pixel check: all four captures are `640x480`, have visible terrain/grid/transparent/sky content, and include visible debug overlay line pixels.
+- Visual check: D3D12 capture shows terrain, grid, transparent quad, sky, and quadtree/skirt overlays still visible with terrain frustum culling enabled.
+- Implementation note: distance-based quadtree selection remains the candidate set. `ForwardRenderer` extracts a `ViewFrustum` from `RenderView.ViewProj`, builds per-node AABBs from XZ bounds and terrain height range, and submits only visible leaves to terrain rendering and debug overlay.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -456,7 +485,8 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Add first-pass terrain tile skirts for selected leaf render items.
 - Done: Add reduced-resolution tile sampling per quadtree level.
 - Done: Add LOD transition diagnostics and crack-boundary inspection.
-- Next: Add frustum culling once node bounds are stable.
+- Done: Add CPU frustum culling once node bounds are stable.
+- Next: Add scripted camera/smoke positions for mixed-level transition and culling regression captures.
 - Later: Add neighbor-aware stitching or morphing after real mixed-resolution terrain tiles exist.
 
 ### Phase 4: LOD Crack Fixing
@@ -650,9 +680,9 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Add frustum culling for quadtree node bounds.
-2. Add camera/debug controls or scripted smoke positions that force mixed-level LOD transitions for visual regression captures.
-3. Add neighbor-aware stitching or morphing research now that mixed-density tile sampling and transition diagnostics exist.
+1. Add camera/debug controls or scripted smoke positions that force mixed-level LOD transitions and off-frustum culling for visual regression captures.
+2. Add neighbor-aware stitching or morphing research now that mixed-density tile sampling and transition diagnostics exist.
+3. Add external heightmap loading for one fixed terrain patch.
 4. Add external heightmap loading for one fixed terrain patch.
 5. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 

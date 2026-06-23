@@ -1,12 +1,60 @@
 #include "ForwardRenderer.hpp"
 
+#include "AdvancedMath.hpp"
 #include "DeviceContext.h"
 #include "FrameResources.hpp"
 #include "RenderView.hpp"
 #include "SwapChain.h"
 
+#include <algorithm>
+
 namespace Diligent
 {
+
+namespace
+{
+
+BoundBox BuildTerrainNodeBounds(const TerrainQuadtreeNode& Node, float MinHeight, float MaxHeight, float SkirtDepth)
+{
+    return BoundBox{
+        float3{Node.MinXZ.x, MinHeight - SkirtDepth, Node.MinXZ.y},
+        float3{Node.MaxXZ.x, MaxHeight, Node.MaxXZ.y}};
+}
+
+void BuildVisibleTerrainSelection(const RenderView& View,
+                                  const TerrainPatchRenderer& TerrainPatchRenderer,
+                                  const std::vector<TerrainQuadtreeNode>& Nodes,
+                                  const TerrainQuadtreeSelection& CandidateSelection,
+                                  bool EnableFrustumCulling,
+                                  TerrainQuadtreeSelection& OutVisibleSelection)
+{
+    OutVisibleSelection.SelectedNodeIndices.clear();
+    OutVisibleSelection.MaxSelectedLevel = 0;
+
+    ViewFrustum Frustum;
+    ExtractViewFrustumPlanesFromMatrix(View.ViewProj, Frustum, View.IsGL);
+
+    const float MinHeight = TerrainPatchRenderer.GetMinHeight();
+    const float MaxHeight = TerrainPatchRenderer.GetMaxHeight();
+    const float SkirtDepth = TerrainPatchRenderer.GetEnableSkirts() ? TerrainPatchRenderer.GetSkirtDepth() : 0.0f;
+
+    for (Uint32 NodeIndex : CandidateSelection.SelectedNodeIndices)
+    {
+        if (NodeIndex >= Nodes.size())
+            continue;
+
+        const TerrainQuadtreeNode& Node = Nodes[NodeIndex];
+        const BoundBox Bounds = BuildTerrainNodeBounds(Node, MinHeight, MaxHeight, SkirtDepth);
+        const bool IsVisible = !EnableFrustumCulling || GetBoxVisibility(Frustum, Bounds) != BoxVisibility::Invisible;
+        if (IsVisible)
+        {
+            OutVisibleSelection.SelectedNodeIndices.push_back(NodeIndex);
+            OutVisibleSelection.MaxSelectedLevel = std::max(OutVisibleSelection.MaxSelectedLevel, Node.Level);
+        }
+    }
+}
+
+} // namespace
 
 void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 {
@@ -44,6 +92,10 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
     m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainFrustumCullingEnabled = m_EnableTerrainFrustumCulling;
+    m_Stats.TerrainQuadtreeCandidateLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainQuadtreeVisibleLeafCount = static_cast<Uint32>(m_VisibleTerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainFrustumCulledLeafCount = 0;
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
     const auto& InitialDebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
@@ -61,10 +113,16 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
 void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources)
 {
     m_TerrainQuadtree.Select(View.CameraPosition, m_TerrainQuadtreeSelection);
+    const auto& QuadtreeNodes = m_TerrainQuadtree.GetNodes();
+    BuildVisibleTerrainSelection(View,
+                                 m_TerrainPatchRenderer,
+                                 QuadtreeNodes,
+                                 m_TerrainQuadtreeSelection,
+                                 m_EnableTerrainFrustumCulling,
+                                 m_VisibleTerrainQuadtreeSelection);
 
     m_RenderQueue.Clear();
-    const auto& QuadtreeNodes = m_TerrainQuadtree.GetNodes();
-    for (Uint32 NodeIndex : m_TerrainQuadtreeSelection.SelectedNodeIndices)
+    for (Uint32 NodeIndex : m_VisibleTerrainQuadtreeSelection.SelectedNodeIndices)
     {
         if (NodeIndex < QuadtreeNodes.size())
         {
@@ -113,7 +171,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     }
 
     if (m_ShowQuadtreeOverlay)
-        m_TerrainQuadtreeDebugRenderer.Render(pContext, View, FrameResources, m_TerrainQuadtree, m_TerrainQuadtreeSelection);
+        m_TerrainQuadtreeDebugRenderer.Render(pContext, View, FrameResources, m_TerrainQuadtree, m_VisibleTerrainQuadtreeSelection);
 
     m_PostProcessRenderer.Render(pContext, m_pSwapChain);
 
@@ -140,8 +198,14 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
     m_Stats.TerrainQuadtreeNodeCount = static_cast<Uint32>(m_TerrainQuadtree.GetNodes().size());
     m_Stats.TerrainQuadtreeSelectedLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainFrustumCullingEnabled = m_EnableTerrainFrustumCulling;
+    m_Stats.TerrainQuadtreeCandidateLeafCount = static_cast<Uint32>(m_TerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainQuadtreeVisibleLeafCount = static_cast<Uint32>(m_VisibleTerrainQuadtreeSelection.SelectedNodeIndices.size());
+    m_Stats.TerrainFrustumCulledLeafCount = m_Stats.TerrainQuadtreeCandidateLeafCount >= m_Stats.TerrainQuadtreeVisibleLeafCount ?
+        m_Stats.TerrainQuadtreeCandidateLeafCount - m_Stats.TerrainQuadtreeVisibleLeafCount :
+        0u;
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
-    m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
+    m_Stats.TerrainQuadtreeMaxSelectedLevel = m_VisibleTerrainQuadtreeSelection.MaxSelectedLevel;
     const auto& DebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = DebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = DebugStats.SkirtEdgeCount;

@@ -51,6 +51,10 @@ struct ForwardRendererStats final
     Uint32 DebugItemCount     = 0;
     Uint32 TerrainQuadtreeNodeCount = 0;
     Uint32 TerrainQuadtreeSelectedLeafCount = 0;
+    bool   TerrainFrustumCullingEnabled = true;
+    Uint32 TerrainQuadtreeCandidateLeafCount = 0;
+    Uint32 TerrainQuadtreeVisibleLeafCount = 0;
+    Uint32 TerrainFrustumCulledLeafCount = 0;
     Uint32 TerrainQuadtreeMaxDepth = 0;
     Uint32 TerrainQuadtreeMaxSelectedLevel = 0;
     Uint32 TerrainDebugLeafBoundLineCount = 0;
@@ -75,12 +79,15 @@ public:
     void SetShowLODTransitionOverlay(bool Show) { m_TerrainQuadtreeDebugRenderer.SetShowLODTransitionEdges(Show); }
     void SetTerrainSkirtsEnabled(bool Enable) { m_TerrainPatchRenderer.SetEnableSkirts(Enable); }
     bool GetTerrainSkirtsEnabled() const { return m_TerrainPatchRenderer.GetEnableSkirts(); }
+    void SetTerrainFrustumCullingEnabled(bool Enable) { m_EnableTerrainFrustumCulling = Enable; }
+    bool GetTerrainFrustumCullingEnabled() const { return m_EnableTerrainFrustumCulling; }
 
 private:
     ForwardDebugPipeline  m_ForwardDebugPipeline;
     TerrainPatchRenderer  m_TerrainPatchRenderer;
     TerrainQuadtree       m_TerrainQuadtree;
     TerrainQuadtreeSelection m_TerrainQuadtreeSelection;
+    TerrainQuadtreeSelection m_VisibleTerrainQuadtreeSelection;
     TerrainQuadtreeDebugRenderer m_TerrainQuadtreeDebugRenderer;
     ShadowRenderer        m_ShadowRenderer;
     SkyRenderer           m_SkyRenderer;
@@ -91,6 +98,7 @@ private:
     ForwardRendererStats  m_Stats;
     ISwapChain*           m_pSwapChain = nullptr;
     bool                  m_ShowQuadtreeOverlay = true;
+    bool                  m_EnableTerrainFrustumCulling = true;
 };
 
 } // namespace Diligent
