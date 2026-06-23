@@ -148,6 +148,15 @@ void ForwardRenderer::SetTerrainHeightmapRawR16(const std::string& Path, Uint32 
     m_TerrainPatchRendererDesc.HeightField.HeightScale = HeightScale;
 }
 
+void ForwardRenderer::SetTerrainHeightmapRawR16Tiles(const std::string& Pattern, Uint32 TileCountX, Uint32 TileCountZ, Uint32 TileSampleCountPerAxis, float HeightScale)
+{
+    m_TerrainPatchRendererDesc.HeightmapRawR16TilesPattern = Pattern;
+    m_TerrainPatchRendererDesc.HeightmapTileCountX = std::max(TileCountX, 1u);
+    m_TerrainPatchRendererDesc.HeightmapTileCountZ = std::max(TileCountZ, 1u);
+    m_TerrainPatchRendererDesc.HeightmapSampleCountPerAxis = TileSampleCountPerAxis;
+    m_TerrainPatchRendererDesc.HeightField.HeightScale = HeightScale;
+}
+
 void ForwardRenderer::SetTerrainHeightmapTileGrid(Uint32 TileCountX, Uint32 TileCountZ)
 {
     m_TerrainPatchRendererDesc.HeightmapTileCountX = std::max(TileCountX, 1u);

@@ -122,6 +122,7 @@ public:
     void SetTerrainLODIndexStitchingEnabled(bool Enable) { m_EnableTerrainLODIndexStitching = Enable; }
     bool GetTerrainLODIndexStitchingEnabled() const { return m_EnableTerrainLODIndexStitching; }
     void SetTerrainHeightmapRawR16(const std::string& Path, Uint32 SampleCountPerAxis, float HeightScale);
+    void SetTerrainHeightmapRawR16Tiles(const std::string& Pattern, Uint32 TileCountX, Uint32 TileCountZ, Uint32 TileSampleCountPerAxis, float HeightScale);
     void SetTerrainHeightmapTileGrid(Uint32 TileCountX, Uint32 TileCountZ);
 
 private:

@@ -49,6 +49,7 @@ private:
     float                m_TerrainLODDistanceScale = 2.2f;
     int                  m_TerrainMaxSelectedLODLevel = 4;
     std::string          m_TerrainHeightmapRawR16Path;
+    std::string          m_TerrainHeightmapRawR16TilesPattern;
     Uint32               m_TerrainHeightmapSampleCountPerAxis = 65;
     float                m_TerrainHeightmapHeightScale = 2.5f;
     Uint32               m_TerrainHeightmapTileCountX = 1;

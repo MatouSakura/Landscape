@@ -41,12 +41,13 @@ LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc,
     }
 
     ArgsParser.Parse("landscape_heightmap_raw_r16", m_TerrainHeightmapRawR16Path);
+    ArgsParser.Parse("landscape_heightmap_raw_r16_tiles", m_TerrainHeightmapRawR16TilesPattern);
     ArgsParser.Parse("landscape_heightmap_samples", m_TerrainHeightmapSampleCountPerAxis);
     ArgsParser.Parse("landscape_heightmap_height_scale", m_TerrainHeightmapHeightScale);
     ArgsParser.Parse("landscape_heightmap_tiles_x", m_TerrainHeightmapTileCountX);
     ArgsParser.Parse("landscape_heightmap_tiles_z", m_TerrainHeightmapTileCountZ);
 
-    if (!m_TerrainHeightmapRawR16Path.empty() && m_TerrainHeightmapSampleCountPerAxis < 2u)
+    if ((!m_TerrainHeightmapRawR16Path.empty() || !m_TerrainHeightmapRawR16TilesPattern.empty()) && m_TerrainHeightmapSampleCountPerAxis < 2u)
     {
         LOG_ERROR_MESSAGE("Invalid landscape_heightmap_samples value. Expected at least 2.");
         return CommandLineStatus::Error;
@@ -59,6 +60,11 @@ LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc,
     if (m_TerrainHeightmapTileCountX == 0u || m_TerrainHeightmapTileCountZ == 0u)
     {
         LOG_ERROR_MESSAGE("Invalid landscape heightmap tile grid. Expected both landscape_heightmap_tiles_x and landscape_heightmap_tiles_z to be at least 1.");
+        return CommandLineStatus::Error;
+    }
+    if (!m_TerrainHeightmapRawR16TilesPattern.empty() && m_TerrainHeightmapTileCountX != m_TerrainHeightmapTileCountZ)
+    {
+        LOG_ERROR_MESSAGE("Invalid non-square tiled RAW R16 heightmap package. landscape_heightmap_raw_r16_tiles v1 requires landscape_heightmap_tiles_x and landscape_heightmap_tiles_z to match.");
         return CommandLineStatus::Error;
     }
 
@@ -74,6 +80,7 @@ void LandscapeEditor::Initialize(const SampleInitInfo& InitInfo)
     m_FrameResources.Initialize(m_pDevice);
     m_ForwardRenderer.SetTerrainHeightmapRawR16(m_TerrainHeightmapRawR16Path, m_TerrainHeightmapSampleCountPerAxis, m_TerrainHeightmapHeightScale);
     m_ForwardRenderer.SetTerrainHeightmapTileGrid(m_TerrainHeightmapTileCountX, m_TerrainHeightmapTileCountZ);
+    m_ForwardRenderer.SetTerrainHeightmapRawR16Tiles(m_TerrainHeightmapRawR16TilesPattern, m_TerrainHeightmapTileCountX, m_TerrainHeightmapTileCountZ, m_TerrainHeightmapSampleCountPerAxis, m_TerrainHeightmapHeightScale);
     m_ForwardRenderer.Initialize(m_pDevice, m_pSwapChain);
     m_ForwardRenderer.SetShowQuadtreeOverlay(m_ShowQuadtreeOverlay);
     m_ForwardRenderer.SetShowSkirtEdgeOverlay(m_ShowSkirtEdgeOverlay);

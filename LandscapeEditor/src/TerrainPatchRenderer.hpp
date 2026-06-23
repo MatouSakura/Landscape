@@ -34,6 +34,7 @@ struct TerrainPatchRendererDesc final
 {
     TerrainHeightFieldDesc HeightField;
     std::string            HeightmapRawR16Path;
+    std::string            HeightmapRawR16TilesPattern;
     Uint32                 HeightmapSampleCountPerAxis = 65;
     Uint32                 HeightmapTileCountX = 1;
     Uint32                 HeightmapTileCountZ = 1;

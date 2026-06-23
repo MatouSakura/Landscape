@@ -26,7 +26,8 @@ struct TerrainHeightSampleStats final
 enum class TerrainHeightFieldSource
 {
     Procedural,
-    RawR16
+    RawR16,
+    RawR16Tiles
 };
 
 class TerrainHeightField final
@@ -37,6 +38,12 @@ public:
                     const std::string& Path,
                     Uint32 SampleCountPerAxis,
                     std::string* ErrorMessage = nullptr);
+    bool LoadRawR16Tiles(const TerrainHeightFieldDesc& Desc,
+                         const std::string& Pattern,
+                         Uint32 TileCountX,
+                         Uint32 TileCountZ,
+                         Uint32 TileSampleCountPerAxis,
+                         std::string* ErrorMessage = nullptr);
 
     Uint32 GetCellCount() const { return m_Desc.CellCount; }
     Uint32 GetSampleCountPerAxis() const { return m_SampleCountPerAxis; }
@@ -49,7 +56,7 @@ public:
     const TerrainHeightSampleStats& GetStats() const { return m_Stats; }
     TerrainHeightFieldSource GetSource() const { return m_Source; }
     const char* GetSourceName() const;
-    bool IsHeightmapLoaded() const { return m_Source == TerrainHeightFieldSource::RawR16; }
+    bool IsHeightmapLoaded() const { return m_Source == TerrainHeightFieldSource::RawR16 || m_Source == TerrainHeightFieldSource::RawR16Tiles; }
 
 private:
     void   InitializeGrid(const TerrainHeightFieldDesc& Desc);

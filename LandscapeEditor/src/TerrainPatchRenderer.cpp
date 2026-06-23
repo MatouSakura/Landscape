@@ -885,7 +885,21 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
 void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes, const TerrainPatchRendererDesc& Desc)
 {
     m_Desc = Desc;
-    if (m_Desc.HeightmapRawR16Path.empty())
+    if (!m_Desc.HeightmapRawR16TilesPattern.empty())
+    {
+        std::string ErrorMessage;
+        if (!m_HeightField.LoadRawR16Tiles(m_Desc.HeightField,
+                                           m_Desc.HeightmapRawR16TilesPattern,
+                                           m_Desc.HeightmapTileCountX,
+                                           m_Desc.HeightmapTileCountZ,
+                                           m_Desc.HeightmapSampleCountPerAxis,
+                                           &ErrorMessage))
+        {
+            LOG_ERROR_MESSAGE("Failed to load tiled RAW R16 terrain heightmap '", m_Desc.HeightmapRawR16TilesPattern.c_str(), "': ", ErrorMessage.c_str(), ". Falling back to procedural heightfield.");
+            m_HeightField.GenerateProcedural(m_Desc.HeightField);
+        }
+    }
+    else if (m_Desc.HeightmapRawR16Path.empty())
     {
         m_HeightField.GenerateProcedural(m_Desc.HeightField);
     }
@@ -904,7 +918,7 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     TerrainHeightmapTileSetDesc TileSetDesc;
     TileSetDesc.TileCountX             = m_Desc.HeightmapTileCountX;
     TileSetDesc.TileCountZ             = m_Desc.HeightmapTileCountZ;
-    TileSetDesc.TileSampleCountPerAxis = m_HeightField.GetSampleCountPerAxis();
+    TileSetDesc.TileSampleCountPerAxis = !m_Desc.HeightmapRawR16TilesPattern.empty() ? m_Desc.HeightmapSampleCountPerAxis : m_HeightField.GetSampleCountPerAxis();
     TileSetDesc.Extent                 = m_TerrainExtent;
     m_HeightmapTileSet.Build(TileSetDesc);
 
