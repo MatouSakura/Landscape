@@ -12,6 +12,7 @@ set(SOURCE
     src/ShadowRenderer.cpp
     src/SkyRenderer.cpp
     src/TerrainHeightField.cpp
+    src/TerrainLODStitching.cpp
     src/TerrainPatchRenderer.cpp
     src/TerrainQuadtree.cpp
     src/TerrainQuadtreeDebugRenderer.cpp
@@ -30,6 +31,7 @@ set(INCLUDE
     src/ShadowRenderer.hpp
     src/SkyRenderer.hpp
     src/TerrainHeightField.hpp
+    src/TerrainLODStitching.hpp
     src/TerrainPatchRenderer.hpp
     src/TerrainQuadtree.hpp
     src/TerrainQuadtreeDebugRenderer.hpp

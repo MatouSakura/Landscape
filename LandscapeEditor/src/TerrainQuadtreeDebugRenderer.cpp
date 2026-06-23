@@ -10,6 +10,7 @@
 #include "Shader.h"
 #include "ShaderResourceBinding.h"
 #include "SwapChain.h"
+#include "TerrainLODStitching.hpp"
 #include "TerrainQuadtree.hpp"
 
 #include <algorithm>
@@ -31,7 +32,6 @@ struct TerrainQuadtreeDebugVertex
 static constexpr float OverlayY = 0.08f;
 static constexpr float SkirtOverlayY = 0.13f;
 static constexpr float LODTransitionOverlayY = 0.18f;
-static constexpr float EdgeEpsilon = 0.0001f;
 static constexpr float3 SkirtEdgeColor{0.05f, 2.30f, 2.80f};
 static constexpr float3 LODTransitionColor{3.40f, 0.20f, 0.05f};
 
@@ -173,79 +173,16 @@ void AppendSkirtEdges(std::vector<TerrainQuadtreeDebugVertex>& Vertices, const T
     AppendLine(Vertices, NW, SW, SkirtEdgeColor);
 }
 
-bool NearlyEqual(float Lhs, float Rhs)
-{
-    return std::abs(Lhs - Rhs) <= EdgeEpsilon;
-}
-
-bool RangesOverlap(float LhsMin, float LhsMax, float RhsMin, float RhsMax, float& OverlapMin, float& OverlapMax)
-{
-    OverlapMin = std::max(LhsMin, RhsMin);
-    OverlapMax = std::min(LhsMax, RhsMax);
-    return OverlapMax - OverlapMin > EdgeEpsilon;
-}
-
-bool FindSharedEdgeOverlap(const TerrainQuadtreeNode& Lhs, const TerrainQuadtreeNode& Rhs, float3& OutStart, float3& OutEnd)
-{
-    if (Lhs.Level != Rhs.Level)
-    {
-        float OverlapMin = 0.0f;
-        float OverlapMax = 0.0f;
-
-        if (NearlyEqual(Lhs.MaxXZ.x, Rhs.MinXZ.x) && RangesOverlap(Lhs.MinXZ.y, Lhs.MaxXZ.y, Rhs.MinXZ.y, Rhs.MaxXZ.y, OverlapMin, OverlapMax))
-        {
-            OutStart = float3{Lhs.MaxXZ.x, LODTransitionOverlayY, OverlapMin};
-            OutEnd   = float3{Lhs.MaxXZ.x, LODTransitionOverlayY, OverlapMax};
-            return true;
-        }
-        if (NearlyEqual(Lhs.MinXZ.x, Rhs.MaxXZ.x) && RangesOverlap(Lhs.MinXZ.y, Lhs.MaxXZ.y, Rhs.MinXZ.y, Rhs.MaxXZ.y, OverlapMin, OverlapMax))
-        {
-            OutStart = float3{Lhs.MinXZ.x, LODTransitionOverlayY, OverlapMin};
-            OutEnd   = float3{Lhs.MinXZ.x, LODTransitionOverlayY, OverlapMax};
-            return true;
-        }
-        if (NearlyEqual(Lhs.MaxXZ.y, Rhs.MinXZ.y) && RangesOverlap(Lhs.MinXZ.x, Lhs.MaxXZ.x, Rhs.MinXZ.x, Rhs.MaxXZ.x, OverlapMin, OverlapMax))
-        {
-            OutStart = float3{OverlapMin, LODTransitionOverlayY, Lhs.MaxXZ.y};
-            OutEnd   = float3{OverlapMax, LODTransitionOverlayY, Lhs.MaxXZ.y};
-            return true;
-        }
-        if (NearlyEqual(Lhs.MinXZ.y, Rhs.MaxXZ.y) && RangesOverlap(Lhs.MinXZ.x, Lhs.MaxXZ.x, Rhs.MinXZ.x, Rhs.MaxXZ.x, OverlapMin, OverlapMax))
-        {
-            OutStart = float3{OverlapMin, LODTransitionOverlayY, Lhs.MinXZ.y};
-            OutEnd   = float3{OverlapMax, LODTransitionOverlayY, Lhs.MinXZ.y};
-            return true;
-        }
-    }
-
-    return false;
-}
-
 Uint32 AppendLODTransitionEdges(std::vector<TerrainQuadtreeDebugVertex>& Vertices,
-                                const std::vector<TerrainQuadtreeNode>&  Nodes,
-                                const std::vector<Uint32>&               SelectedNodeIndices)
+                                const TerrainLODStitching&               Stitching)
 {
     Uint32 EdgeCount = 0;
-    for (size_t LhsIndex = 0; LhsIndex < SelectedNodeIndices.size(); ++LhsIndex)
+    for (const TerrainLODSeamEdge& Seam : Stitching.GetSeams())
     {
-        const Uint32 LhsNodeIndex = SelectedNodeIndices[LhsIndex];
-        if (LhsNodeIndex >= Nodes.size())
-            continue;
-
-        for (size_t RhsIndex = LhsIndex + 1u; RhsIndex < SelectedNodeIndices.size(); ++RhsIndex)
-        {
-            const Uint32 RhsNodeIndex = SelectedNodeIndices[RhsIndex];
-            if (RhsNodeIndex >= Nodes.size())
-                continue;
-
-            float3 Start;
-            float3 End;
-            if (FindSharedEdgeOverlap(Nodes[LhsNodeIndex], Nodes[RhsNodeIndex], Start, End))
-            {
-                AppendLine(Vertices, Start, End, LODTransitionColor);
-                ++EdgeCount;
-            }
-        }
+        const float3 Start{Seam.StartXZ.x, LODTransitionOverlayY, Seam.StartXZ.y};
+        const float3 End{Seam.EndXZ.x, LODTransitionOverlayY, Seam.EndXZ.y};
+        AppendLine(Vertices, Start, End, LODTransitionColor);
+        ++EdgeCount;
     }
     return EdgeCount;
 }
@@ -327,7 +264,7 @@ void TerrainQuadtreeDebugRenderer::Initialize(IRenderDevice* pDevice, ISwapChain
     m_pPSO->CreateShaderResourceBinding(&m_pSRB, true);
 }
 
-void TerrainQuadtreeDebugRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainQuadtree& Quadtree, const TerrainQuadtreeSelection& Selection)
+void TerrainQuadtreeDebugRenderer::Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainQuadtree& Quadtree, const TerrainQuadtreeSelection& Selection, const TerrainLODStitching& Stitching)
 {
     (void)View;
 
@@ -365,7 +302,7 @@ void TerrainQuadtreeDebugRenderer::Render(IDeviceContext* pContext, const Render
     if (m_ShowLODTransitionEdges && Vertices.size() + 2u <= m_MaxLineVertexCount)
     {
         const Uint32 PreviousVertexCount = static_cast<Uint32>(Vertices.size());
-        m_Stats.LODTransitionEdgeCount = AppendLODTransitionEdges(Vertices, Nodes, Selection.SelectedNodeIndices);
+        m_Stats.LODTransitionEdgeCount = AppendLODTransitionEdges(Vertices, Stitching);
         if (Vertices.size() > m_MaxLineVertexCount)
         {
             Vertices.resize(m_MaxLineVertexCount - (m_MaxLineVertexCount % 2u));

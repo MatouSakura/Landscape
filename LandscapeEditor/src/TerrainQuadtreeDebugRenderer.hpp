@@ -3,6 +3,7 @@
 #include "Buffer.h"
 #include "PipelineState.h"
 #include "RefCntAutoPtr.hpp"
+#include "TerrainLODStitching.hpp"
 
 namespace Diligent
 {
@@ -29,7 +30,7 @@ class TerrainQuadtreeDebugRenderer final
 {
 public:
     void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, Uint32 MaxLineVertexCount);
-    void Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainQuadtree& Quadtree, const TerrainQuadtreeSelection& Selection);
+    void Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainQuadtree& Quadtree, const TerrainQuadtreeSelection& Selection, const TerrainLODStitching& Stitching);
 
     void SetShowSkirtEdges(bool Show) { m_ShowSkirtEdges = Show; }
     void SetShowLODTransitionEdges(bool Show) { m_ShowLODTransitionEdges = Show; }

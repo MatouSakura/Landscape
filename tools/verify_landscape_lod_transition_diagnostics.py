@@ -48,6 +48,8 @@ def main() -> int:
     files = {
         "debug_hpp": "LandscapeEditor/src/TerrainQuadtreeDebugRenderer.hpp",
         "debug_cpp": "LandscapeEditor/src/TerrainQuadtreeDebugRenderer.cpp",
+        "stitch_hpp": "LandscapeEditor/src/TerrainLODStitching.hpp",
+        "stitch_cpp": "LandscapeEditor/src/TerrainLODStitching.cpp",
         "renderer_hpp": "LandscapeEditor/src/ForwardRenderer.hpp",
         "renderer_cpp": "LandscapeEditor/src/ForwardRenderer.cpp",
         "editor_hpp": "LandscapeEditor/src/LandscapeEditor.hpp",
@@ -60,6 +62,7 @@ def main() -> int:
         return read_text(files[key])
 
     debug_text = f("debug_hpp") + f("debug_cpp")
+    stitch_text = f("stitch_hpp") + f("stitch_cpp")
     renderer_text = f("renderer_hpp") + f("renderer_cpp")
     editor_text = f("editor_hpp") + f("editor_cpp")
 
@@ -67,8 +70,8 @@ def main() -> int:
         ("debug_stats_type", lambda: require_contains(debug_text, r"TerrainQuadtreeDebugStats.*LeafBoundLineCount.*SkirtEdgeCount.*LODTransitionEdgeCount.*LineVertexCount", "quadtree debug stats type")),
         ("debug_toggles", lambda: require_contains(debug_text, r"SetShowSkirtEdges.*SetShowLODTransitionEdges.*GetStats", "quadtree diagnostic toggles and stats accessor")),
         ("skirt_edge_generation", lambda: require_contains(f("debug_cpp"), r"AppendSkirtEdges\s*\([^)]*TerrainQuadtreeNode.*SkirtEdgeColor", "selected leaf skirt edge generation")),
-        ("transition_edge_generation", lambda: require_contains(f("debug_cpp"), r"AppendLODTransitionEdges\s*\([^)]*SelectedNodeIndices.*FindSharedEdgeOverlap.*LODTransitionColor", "LOD transition edge generation")),
-        ("edge_overlap_helper", lambda: require_contains(f("debug_cpp"), r"FindSharedEdgeOverlap.*Lhs\.Level\s*!=\s*Rhs\.Level.*OverlapMin.*OverlapMax", "adjacent mixed-LOD overlap detection")),
+        ("transition_edge_generation", lambda: require_contains(f("debug_cpp"), r"TerrainLODStitching.*AppendLODTransitionEdges\s*\([^)]*TerrainLODStitching.*LODTransitionColor", "LOD transition edge generation from seam plan")),
+        ("edge_overlap_helper", lambda: require_contains(stitch_text, r"TryBuildSeamEdge.*Lhs\.Level\s*==\s*Rhs\.Level.*OverlapMin.*OverlapMax", "adjacent mixed-LOD overlap detection")),
         ("render_appends_diagnostics", lambda: require_contains(f("debug_cpp"), r"m_ShowSkirtEdges.*AppendSkirtEdges.*m_ShowLODTransitionEdges.*AppendLODTransitionEdges", "render appends optional skirt and LOD transition diagnostics")),
         ("renderer_stats", lambda: require_contains(renderer_text, r"TerrainDebugLeafBoundLineCount.*TerrainDebugSkirtEdgeCount.*TerrainDebugLODTransitionEdgeCount.*TerrainDebugLineVertexCount", "ForwardRenderer debug diagnostic stats")),
         ("renderer_toggles", lambda: require_contains(renderer_text, r"SetShowSkirtEdgeOverlay.*SetShowLODTransitionOverlay", "ForwardRenderer diagnostic overlay toggles")),

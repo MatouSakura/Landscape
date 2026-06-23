@@ -79,6 +79,15 @@ void UpdateTerrainComponentLODStats(const TerrainQuadtree& Quadtree,
     Stats.TerrainSelectedMaxComponentWorldSize = Quadtree.GetComponentWorldSize(Selection.MinSelectedLevel);
 }
 
+void UpdateTerrainLODStitchingStats(const TerrainLODStitching& Stitching, ForwardRendererStats& Stats)
+{
+    const TerrainLODStitchingStats& StitchingStats = Stitching.GetStats();
+    Stats.TerrainLODStitchingSeamEdgeCount = StitchingStats.SeamEdgeCount;
+    Stats.TerrainLODStitchingMaxDelta      = StitchingStats.MaxLODDelta;
+    Stats.TerrainLODStitchingMaxRatio      = StitchingStats.MaxStitchRatio;
+    Stats.TerrainLODStitchingTotalLength   = StitchingStats.TotalSeamLength;
+}
+
 } // namespace
 
 void ForwardRenderer::SetTerrainLODDistanceScale(float Scale)
@@ -138,6 +147,7 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_TerrainQuadtreeSelection.MaxSelectedLevel;
     UpdateTerrainComponentLODStats(m_TerrainQuadtree, m_TerrainQuadtreeSelection, m_Stats);
+    UpdateTerrainLODStitchingStats(m_TerrainLODStitching, m_Stats);
     const auto& InitialDebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = InitialDebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = InitialDebugStats.SkirtEdgeCount;
@@ -160,6 +170,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
                                  m_TerrainQuadtreeSelection,
                                  m_EnableTerrainFrustumCulling,
                                  m_VisibleTerrainQuadtreeSelection);
+    m_TerrainLODStitching.Build(QuadtreeNodes, m_VisibleTerrainQuadtreeSelection);
 
     m_RenderQueue.Clear();
     for (Uint32 NodeIndex : m_VisibleTerrainQuadtreeSelection.SelectedNodeIndices)
@@ -211,7 +222,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     }
 
     if (m_ShowQuadtreeOverlay)
-        m_TerrainQuadtreeDebugRenderer.Render(pContext, View, FrameResources, m_TerrainQuadtree, m_VisibleTerrainQuadtreeSelection);
+        m_TerrainQuadtreeDebugRenderer.Render(pContext, View, FrameResources, m_TerrainQuadtree, m_VisibleTerrainQuadtreeSelection, m_TerrainLODStitching);
 
     m_PostProcessRenderer.Render(pContext, m_pSwapChain);
 
@@ -247,6 +258,7 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainQuadtreeMaxDepth = m_TerrainQuadtree.GetMaxDepth();
     m_Stats.TerrainQuadtreeMaxSelectedLevel = m_VisibleTerrainQuadtreeSelection.MaxSelectedLevel;
     UpdateTerrainComponentLODStats(m_TerrainQuadtree, m_VisibleTerrainQuadtreeSelection, m_Stats);
+    UpdateTerrainLODStitchingStats(m_TerrainLODStitching, m_Stats);
     const auto& DebugStats = m_TerrainQuadtreeDebugRenderer.GetStats();
     m_Stats.TerrainDebugLeafBoundLineCount = DebugStats.LeafBoundLineCount;
     m_Stats.TerrainDebugSkirtEdgeCount = DebugStats.SkirtEdgeCount;

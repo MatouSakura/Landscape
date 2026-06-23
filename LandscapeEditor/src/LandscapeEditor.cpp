@@ -136,6 +136,9 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Debug skirt edges: %u", Stats.TerrainDebugSkirtEdgeCount);
         ImGui::Text("Debug LOD transition edges: %u", Stats.TerrainDebugLODTransitionEdgeCount);
         ImGui::Text("Debug line vertices: %u", Stats.TerrainDebugLineVertexCount);
+        ImGui::Text("LOD stitching seams: %u", Stats.TerrainLODStitchingSeamEdgeCount);
+        ImGui::Text("LOD stitching max delta: %u, ratio: %u", Stats.TerrainLODStitchingMaxDelta, Stats.TerrainLODStitchingMaxRatio);
+        ImGui::Text("LOD stitching length: %.2f", Stats.TerrainLODStitchingTotalLength);
         ImGui::Text("Shadow cascades: %u", Stats.ShadowCascadeCount);
         ImGui::Text("Shadow map: %u", Stats.ShadowMapSize);
         ImGui::Text("Sky passes: %u", Stats.SkyPassCount);

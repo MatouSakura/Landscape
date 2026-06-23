@@ -6,6 +6,7 @@
 #include "RenderQueue.hpp"
 #include "ShadowRenderer.hpp"
 #include "SkyRenderer.hpp"
+#include "TerrainLODStitching.hpp"
 #include "TerrainPatchRenderer.hpp"
 #include "TerrainQuadtree.hpp"
 #include "TerrainQuadtreeDebugRenderer.hpp"
@@ -68,6 +69,10 @@ struct ForwardRendererStats final
     Uint32 TerrainDebugSkirtEdgeCount = 0;
     Uint32 TerrainDebugLODTransitionEdgeCount = 0;
     Uint32 TerrainDebugLineVertexCount = 0;
+    Uint32 TerrainLODStitchingSeamEdgeCount = 0;
+    Uint32 TerrainLODStitchingMaxDelta = 0;
+    Uint32 TerrainLODStitchingMaxRatio = 1;
+    float  TerrainLODStitchingTotalLength = 0.0f;
     Uint32 PostProcessPassCount = 0;
     size_t PSOCount           = 0;
     size_t PSOCreationCount = 0;
@@ -99,6 +104,7 @@ private:
     TerrainQuadtree       m_TerrainQuadtree;
     TerrainQuadtreeSelection m_TerrainQuadtreeSelection;
     TerrainQuadtreeSelection m_VisibleTerrainQuadtreeSelection;
+    TerrainLODStitching   m_TerrainLODStitching;
     TerrainQuadtreeDebugRenderer m_TerrainQuadtreeDebugRenderer;
     ShadowRenderer        m_ShadowRenderer;
     SkyRenderer           m_SkyRenderer;
