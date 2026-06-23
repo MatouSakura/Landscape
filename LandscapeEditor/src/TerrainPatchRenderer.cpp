@@ -27,6 +27,37 @@ struct TerrainVertex
     float2 UV;
 };
 
+TerrainDrawRegion BuildTerrainDrawRegion(const TerrainHeightField& HeightField, float TerrainExtent, const TerrainQuadtreeNode& Node)
+{
+    const Uint32 CellCount = HeightField.GetCellCount();
+    const float  InvSize   = CellCount > 0 ? static_cast<float>(CellCount) / (2.0f * TerrainExtent) : 0.0f;
+
+    auto ToCellBoundary = [&](float WorldCoord) {
+        const float CellCoord = (WorldCoord + TerrainExtent) * InvSize;
+        const Int32 Rounded = static_cast<Int32>(std::lround(CellCoord));
+        return static_cast<Uint32>(std::clamp<Int32>(Rounded, 0, static_cast<Int32>(CellCount)));
+    };
+
+    const Uint32 MinCellX = ToCellBoundary(Node.MinXZ.x);
+    const Uint32 MaxCellX = ToCellBoundary(Node.MaxXZ.x);
+    const Uint32 MinCellZ = ToCellBoundary(Node.MinXZ.y);
+    const Uint32 MaxCellZ = ToCellBoundary(Node.MaxXZ.y);
+
+    TerrainDrawRegion Region;
+    Region.NodeIndex  = Node.NodeIndex;
+    Region.Level      = Node.Level;
+    Region.MinXZ      = Node.MinXZ;
+    Region.MaxXZ      = Node.MaxXZ;
+    Region.FirstCellX = std::min(MinCellX, CellCount > 0 ? CellCount - 1u : 0u);
+    Region.FirstCellZ = std::min(MinCellZ, CellCount > 0 ? CellCount - 1u : 0u);
+
+    const Uint32 EndCellX = std::clamp(MaxCellX, Region.FirstCellX + 1u, CellCount);
+    const Uint32 EndCellZ = std::clamp(MaxCellZ, Region.FirstCellZ + 1u, CellCount);
+    Region.CellCountX = EndCellX - Region.FirstCellX;
+    Region.CellCountZ = EndCellZ - Region.FirstCellZ;
+    return Region;
+}
+
 static const char* TerrainVS = R"(
 cbuffer CameraConstants
 {
@@ -369,33 +400,10 @@ static RefCntAutoPtr<IPipelineState> CreateTerrainShadowPipelineState(IRenderDev
 
 TerrainDrawRegion TerrainPatchRenderer::BuildDrawRegion(const TerrainQuadtreeNode& Node) const
 {
-    const Uint32 CellCount = m_HeightField.GetCellCount();
-    const float  InvSize   = CellCount > 0 ? static_cast<float>(CellCount) / (2.0f * m_TerrainExtent) : 0.0f;
+    if (Node.NodeIndex < m_TileMeshRanges.size())
+        return m_TileMeshRanges[Node.NodeIndex].Region;
 
-    auto ToCellBoundary = [&](float WorldCoord) {
-        const float CellCoord = (WorldCoord + m_TerrainExtent) * InvSize;
-        const Int32 Rounded = static_cast<Int32>(std::lround(CellCoord));
-        return static_cast<Uint32>(std::clamp<Int32>(Rounded, 0, static_cast<Int32>(CellCount)));
-    };
-
-    const Uint32 MinCellX = ToCellBoundary(Node.MinXZ.x);
-    const Uint32 MaxCellX = ToCellBoundary(Node.MaxXZ.x);
-    const Uint32 MinCellZ = ToCellBoundary(Node.MinXZ.y);
-    const Uint32 MaxCellZ = ToCellBoundary(Node.MaxXZ.y);
-
-    TerrainDrawRegion Region;
-    Region.NodeIndex  = Node.NodeIndex;
-    Region.Level      = Node.Level;
-    Region.MinXZ      = Node.MinXZ;
-    Region.MaxXZ      = Node.MaxXZ;
-    Region.FirstCellX = std::min(MinCellX, CellCount > 0 ? CellCount - 1u : 0u);
-    Region.FirstCellZ = std::min(MinCellZ, CellCount > 0 ? CellCount - 1u : 0u);
-
-    const Uint32 EndCellX = std::clamp(MaxCellX, Region.FirstCellX + 1u, CellCount);
-    const Uint32 EndCellZ = std::clamp(MaxCellZ, Region.FirstCellZ + 1u, CellCount);
-    Region.CellCountX = EndCellX - Region.FirstCellX;
-    Region.CellCountZ = EndCellZ - Region.FirstCellZ;
-    return Region;
+    return BuildTerrainDrawRegion(m_HeightField, m_TerrainExtent, Node);
 }
 
 void TerrainPatchRenderer::BeginFrameStats()
@@ -405,56 +413,77 @@ void TerrainPatchRenderer::BeginFrameStats()
     m_LastShadowDrawCallCount  = 0;
 }
 
-void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache)
+void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes)
 {
-    TerrainHeightFieldDesc HeightFieldDesc;
-    m_HeightField.GenerateProcedural(HeightFieldDesc);
-    m_TerrainExtent = HeightFieldDesc.Extent;
-
-    const Uint32 CellCount   = m_HeightField.GetCellCount();
-    const Uint32 SampleCount = m_HeightField.GetSampleCountPerAxis();
-
     std::vector<TerrainVertex> Vertices;
-    Vertices.reserve(SampleCount * SampleCount);
+    std::vector<Uint32>        Indices;
+    m_TileMeshRanges.clear();
+    m_TileMeshRanges.resize(QuadtreeNodes.size());
 
-    for (Uint32 z = 0; z < SampleCount; ++z)
+    const Uint32 TerrainCellCount = m_HeightField.GetCellCount();
+    const float  CellSize = TerrainCellCount > 0 ? (2.0f * m_TerrainExtent) / static_cast<float>(TerrainCellCount) : 0.0f;
+
+    for (const TerrainQuadtreeNode& Node : QuadtreeNodes)
     {
-        const float Z = -HeightFieldDesc.Extent + 2.0f * HeightFieldDesc.Extent * static_cast<float>(z) / static_cast<float>(CellCount);
-        for (Uint32 x = 0; x < SampleCount; ++x)
+        TerrainDrawRegion Region = BuildTerrainDrawRegion(m_HeightField, m_TerrainExtent, Node);
+        Region.BaseVertex         = static_cast<Uint32>(Vertices.size());
+        Region.FirstIndexLocation = static_cast<Uint32>(Indices.size());
+
+        const Uint32 SampleCountX = Region.CellCountX + 1u;
+        const Uint32 SampleCountZ = Region.CellCountZ + 1u;
+        Vertices.reserve(Vertices.size() + SampleCountX * SampleCountZ);
+        Indices.reserve(Indices.size() + Region.CellCountX * Region.CellCountZ * 6u);
+
+        for (Uint32 LocalZ = 0; LocalZ < SampleCountZ; ++LocalZ)
         {
-            const float X = -HeightFieldDesc.Extent + 2.0f * HeightFieldDesc.Extent * static_cast<float>(x) / static_cast<float>(CellCount);
-            Vertices.push_back(TerrainVertex{
-                float3{X, m_HeightField.GetHeight(x, z), Z},
-                m_HeightField.GetNormal(x, z),
-                m_HeightField.GetUV(x, z)});
+            const Uint32 SampleZ = Region.FirstCellZ + LocalZ;
+            const float  WorldZ  = -m_TerrainExtent + CellSize * static_cast<float>(SampleZ);
+            for (Uint32 LocalX = 0; LocalX < SampleCountX; ++LocalX)
+            {
+                const Uint32 SampleX = Region.FirstCellX + LocalX;
+                const float  WorldX  = -m_TerrainExtent + CellSize * static_cast<float>(SampleX);
+                Vertices.push_back(TerrainVertex{
+                    float3{WorldX, m_HeightField.GetHeight(SampleX, SampleZ), WorldZ},
+                    m_HeightField.GetNormal(SampleX, SampleZ),
+                    m_HeightField.GetUV(SampleX, SampleZ)});
+            }
         }
+
+        const Uint32 LocalRowStride = SampleCountX;
+        for (Uint32 LocalZ = 0; LocalZ < Region.CellCountZ; ++LocalZ)
+        {
+            for (Uint32 LocalX = 0; LocalX < Region.CellCountX; ++LocalX)
+            {
+                const Uint32 LocalI0 = LocalZ * LocalRowStride + LocalX;
+                const Uint32 LocalI1 = LocalI0 + 1u;
+                const Uint32 LocalI2 = LocalI0 + LocalRowStride;
+                const Uint32 LocalI3 = LocalI2 + 1u;
+
+                Indices.push_back(LocalI0);
+                Indices.push_back(LocalI2);
+                Indices.push_back(LocalI1);
+                Indices.push_back(LocalI1);
+                Indices.push_back(LocalI2);
+                Indices.push_back(LocalI3);
+            }
+        }
+
+        Region.NumIndices = static_cast<Uint32>(Indices.size()) - Region.FirstIndexLocation;
+
+        TerrainTileMeshRange Range;
+        Range.Region      = Region;
+        Range.VertexCount = static_cast<Uint32>(Vertices.size()) - Region.BaseVertex;
+
+        if (Node.NodeIndex < m_TileMeshRanges.size())
+            m_TileMeshRanges[Node.NodeIndex] = Range;
     }
 
-    std::vector<Uint32> Indices;
-    Indices.reserve(CellCount * CellCount * 6u);
-
-    const Uint32 RowStride = SampleCount;
-    for (Uint32 z = 0; z < CellCount; ++z)
-    {
-        for (Uint32 x = 0; x < CellCount; ++x)
-        {
-            const Uint32 I0 = z * RowStride + x;
-            const Uint32 I1 = I0 + 1u;
-            const Uint32 I2 = I0 + RowStride;
-            const Uint32 I3 = I2 + 1u;
-
-            Indices.push_back(I0);
-            Indices.push_back(I2);
-            Indices.push_back(I1);
-            Indices.push_back(I1);
-            Indices.push_back(I2);
-            Indices.push_back(I3);
-        }
-    }
-    m_IndexCount = static_cast<Uint32>(Indices.size());
+    m_PackedTileVertexCount = static_cast<Uint32>(Vertices.size());
+    m_PackedTileIndexCount  = static_cast<Uint32>(Indices.size());
+    m_IndexCount            = m_PackedTileIndexCount;
 
     BufferDesc VBDesc;
-    VBDesc.Name      = "LandscapeEditor terrain patch vertex buffer";
+    VBDesc.Name      = "LandscapeEditor packed terrain tile vertex buffer";
     VBDesc.Usage     = USAGE_IMMUTABLE;
     VBDesc.BindFlags = BIND_VERTEX_BUFFER;
     VBDesc.Size      = static_cast<Uint64>(Vertices.size() * sizeof(TerrainVertex));
@@ -464,7 +493,7 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     pDevice->CreateBuffer(VBDesc, &VBData, &m_pVertexBuffer);
 
     BufferDesc IBDesc;
-    IBDesc.Name      = "LandscapeEditor terrain patch index buffer";
+    IBDesc.Name      = "LandscapeEditor packed terrain tile index buffer";
     IBDesc.Usage     = USAGE_IMMUTABLE;
     IBDesc.BindFlags = BIND_INDEX_BUFFER;
     IBDesc.Size      = static_cast<Uint64>(Indices.size() * sizeof(Uint32));
@@ -472,6 +501,15 @@ void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapC
     IBData.pData    = Indices.data();
     IBData.DataSize = IBDesc.Size;
     pDevice->CreateBuffer(IBDesc, &IBData, &m_pIndexBuffer);
+}
+
+void TerrainPatchRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes)
+{
+    TerrainHeightFieldDesc HeightFieldDesc;
+    m_HeightField.GenerateProcedural(HeightFieldDesc);
+    m_TerrainExtent = HeightFieldDesc.Extent;
+
+    BuildPackedTileMeshCache(pDevice, QuadtreeNodes);
 
     m_pTerrainPSO = PSOCache.GetOrCreate("ForwardOpaque.TerrainPatch.Heightfield.v1", [&]() {
         return CreateTerrainPipelineState(pDevice, pSwapChain);
@@ -508,7 +546,8 @@ void TerrainPatchRenderer::Render(IDeviceContext* pContext, const RenderView& Vi
     pContext->SetPipelineState(m_pTerrainPSO);
     pContext->CommitShaderResources(m_pTerrainSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    m_LastForwardDrawCallCount += DrawRegionIndexed(pContext, Region);
+    DrawTileMeshIndexed(pContext, Region);
+    m_LastForwardDrawCallCount += Region.NumIndices > 0 ? 1u : 0u;
     m_LastRenderedCellCount += Region.CellCountX * Region.CellCountZ;
 }
 
@@ -526,27 +565,22 @@ void TerrainPatchRenderer::RenderShadow(IDeviceContext* pContext, IBuffer* pShad
     pContext->SetPipelineState(m_pShadowPSO);
     pContext->CommitShaderResources(m_pShadowSRB, RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
 
-    m_LastShadowDrawCallCount += DrawRegionIndexed(pContext, Region);
+    DrawTileMeshIndexed(pContext, Region);
+    m_LastShadowDrawCallCount += Region.NumIndices > 0 ? 1u : 0u;
 }
 
-Uint32 TerrainPatchRenderer::DrawRegionIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const
+void TerrainPatchRenderer::DrawTileMeshIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const
 {
-    if (Region.CellCountX == 0 || Region.CellCountZ == 0)
-        return 0;
+    if (Region.NumIndices == 0)
+        return;
 
-    const Uint32 TerrainCellCount = m_HeightField.GetCellCount();
-    Uint32 DrawCallCount = 0;
-    for (Uint32 LocalZ = 0; LocalZ < Region.CellCountZ; ++LocalZ)
-    {
-        DrawIndexedAttribs DrawAttrs;
-        DrawAttrs.IndexType          = VT_UINT32;
-        DrawAttrs.NumIndices         = Region.CellCountX * 6u;
-        DrawAttrs.FirstIndexLocation = ((Region.FirstCellZ + LocalZ) * TerrainCellCount + Region.FirstCellX) * 6u;
-        DrawAttrs.Flags              = DRAW_FLAG_VERIFY_ALL;
-        pContext->DrawIndexed(DrawAttrs);
-        ++DrawCallCount;
-    }
-    return DrawCallCount;
+    DrawIndexedAttribs DrawAttrs;
+    DrawAttrs.IndexType          = VT_UINT32;
+    DrawAttrs.NumIndices         = Region.NumIndices;
+    DrawAttrs.FirstIndexLocation = Region.FirstIndexLocation;
+    DrawAttrs.BaseVertex         = Region.BaseVertex;
+    DrawAttrs.Flags              = DRAW_FLAG_VERIFY_ALL;
+    pContext->DrawIndexed(DrawAttrs);
 }
 
 } // namespace Diligent

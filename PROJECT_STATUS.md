@@ -72,6 +72,8 @@ Primary reasons:
   `docs/superpowers/plans/2026-06-23-cpu-quadtree-lod-selection.md`
 - Added the selected leaf terrain render items implementation plan:
   `docs/superpowers/plans/2026-06-23-selected-leaf-terrain-render-items.md`
+- Added the packed tile mesh cache implementation plan:
+  `docs/superpowers/plans/2026-06-23-packed-tile-mesh-cache.md`
 - The planned path is now to expand `LandscapeEditor` into a complete first forward renderer with camera-driven frame resources, render queues, PSO cache, terrain patch rendering, sun light with four-cascade shadows, procedural sky, transparent/debug/postprocess passes, and runtime debug UI.
 
 ### Framework Build / Runtime Validation
@@ -142,10 +144,13 @@ Current implementation:
 - Converts selected leaf terrain render items into opaque queue items with node bounds and heightfield cell ranges.
 - Uses the selected leaf terrain render items for both forward opaque terrain and shadow depth rendering.
 - Tracks terrain render item count, rendered cell count, and forward/shadow terrain draw-call counts in ImGui.
+- Builds a packed tile mesh cache for every quadtree node during terrain renderer initialization.
+- Draws selected terrain leaves with one indexed draw per tile mesh using `BaseVertex`, `FirstIndexLocation`, and `NumIndices`.
+- Tracks packed tile mesh count, packed vertex count, and packed index count in ImGui.
 - Uses OpenGL-specific GLSL shader paths for postprocess, sky, and heightfield terrain where backend translation or depth behavior needs explicit handling.
 - Binds render targets before clear operations so OpenGL smoke runs without clear-target errors.
 - Draws sky before opaque terrain on OpenGL only; D3D12, Vulkan, and D3D11 keep the normal opaque-then-sky pass order.
-- Keeps external heightmap loading, independent per-node mesh buffers or reusable tiled grid meshes, LOD crack fixing, full cascade selection/stabilization, and production terrain materials deferred until the terrain data model is expanded.
+- Keeps external heightmap loading, LOD crack fixing, frustum culling, full cascade selection/stabilization, and production terrain materials deferred until the terrain data model is expanded.
 
 Validation completed on 2026-06-22:
 
@@ -242,6 +247,27 @@ Selected leaf terrain render items validation completed on 2026-06-23:
 - Visual check: D3D12 capture shows the heightfield terrain still covers the patch after switching opaque terrain submission from one full-patch item to selected leaf render items.
 - Implementation note: this stage uses row-based indexed draws with `FirstIndexLocation` over the existing heightfield index buffer. It establishes render item granularity before introducing per-node mesh buffers or a reusable tile grid.
 
+Packed tile mesh cache validation completed on 2026-06-23:
+
+- Build: `LandscapeEditor` Release target succeeded with VS18 CMake.
+- Static validation:
+  - `tools\verify_landscape_stage4.py`
+  - `tools\verify_landscape_stage5.py`
+  - `tools\verify_landscape_stage6.py`
+  - `tools\verify_landscape_forward_completion.py`
+  - `tools\verify_landscape_heightfield.py`
+  - `tools\verify_landscape_quadtree_lod.py`
+  - `tools\verify_landscape_selected_leaf_render_items.py`
+  - `tools\verify_landscape_packed_tile_mesh_cache.py`
+- Smoke captures:
+  - D3D12: `build\Win64-vs18\smoke-packed-tiles-d3d12\landscape_packed_tiles_d3d12.png`
+  - Vulkan: `build\Win64-vs18\smoke-packed-tiles-vk\landscape_packed_tiles_vk.png`
+  - D3D11: `build\Win64-vs18\smoke-packed-tiles-d3d11\landscape_packed_tiles_d3d11.png`
+  - OpenGL: `build\Win64-vs18\smoke-packed-tiles-gl\landscape_packed_tiles_gl.png`
+- Pixel check: all four captures are `640x480`, have visible terrain/grid/transparent/sky content, and include visible quadtree overlay line pixels.
+- Visual check: D3D12 capture shows the heightfield terrain remains continuous after switching from row-based region drawing to packed per-node tile mesh ranges.
+- Implementation note: each quadtree node now has a prebuilt tile mesh range in the shared immutable terrain vertex and index buffers. Selected leaf render items draw those ranges with `BaseVertex`, `FirstIndexLocation`, and `NumIndices`.
+
 ### Hardware / RTXNS Finding
 
 RTXNS was cloned and built separately under `E:\RTXNX`, but it is not suitable as the AMD terrain project base.
@@ -272,7 +298,7 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - LOD strategy: distance-based quadtree LOD first
 - Crack handling: skirt or LOD morphing
 - Culling: CPU frustum culling first, GPU culling later
-- Rendering path: indexed patch mesh first, indirect draw later
+- Rendering path: packed per-node tile mesh cache first, indirect draw later
 
 ### Rendering Pipeline
 
@@ -345,8 +371,9 @@ This is treated as a reference-only project, not the Landscape runtime base.
 - Done: Select LOD based on camera XZ distance.
 - Done: Add debug overlay for selected quadtree nodes and LOD levels.
 - Done: Convert selected quadtree leaves into terrain render items.
-- Next: Decide whether selected leaf render items use per-node mesh buffers or a reusable grid mesh with per-node constants.
-- Later: Add frustum culling once node bounds are stable.
+- Done: Add packed per-node tile mesh cache for selected leaf render items.
+- Next: Add a first-pass LOD crack policy.
+- Next: Add frustum culling once node bounds are stable.
 - Later: Render selected leaf nodes as terrain tiles with crack handling.
 
 ### Phase 4: LOD Crack Fixing
@@ -539,9 +566,9 @@ cd E:\Landscape\build\Win64-vs18\LandscapeEditor\Release
 
 ## Next Immediate Steps
 
-1. Choose the first tiled rendering strategy: per-node mesh buffers or one reusable grid mesh with per-node constants.
-2. Add a first-pass LOD crack policy, likely skirts before morphing.
-3. Add frustum culling for quadtree node bounds.
+1. Add a first-pass LOD crack policy, likely skirts before morphing.
+2. Add frustum culling for quadtree node bounds.
+3. Add LOD transition diagnostics so selected leaf levels and crack boundaries can be inspected while moving the camera.
 4. Add external heightmap loading for one fixed terrain patch.
 5. Keep OpenGL postprocess and OpenGL sky/terrain/quadtree overlay paths in the regular smoke set so `BUG-010` stays closed and GL terrain remains visible.
 

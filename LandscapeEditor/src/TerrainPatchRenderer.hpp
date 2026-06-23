@@ -7,6 +7,8 @@
 #include "TerrainHeightField.hpp"
 #include "TerrainQuadtree.hpp"
 
+#include <vector>
+
 namespace Diligent
 {
 
@@ -19,10 +21,16 @@ class FrameResources;
 class PSOCache;
 struct RenderView;
 
+struct TerrainTileMeshRange final
+{
+    TerrainDrawRegion Region;
+    Uint32            VertexCount = 0;
+};
+
 class TerrainPatchRenderer final
 {
 public:
-    void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache);
+    void Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain, PSOCache& PSOCache, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes);
     TerrainDrawRegion BuildDrawRegion(const TerrainQuadtreeNode& Node) const;
     void BeginFrameStats();
     void Render(IDeviceContext* pContext, const RenderView& View, FrameResources& FrameResources, const TerrainDrawRegion& Region, ITextureView* pShadowMapSRV);
@@ -33,6 +41,9 @@ public:
     Uint32 GetLastRenderedCellCount() const { return m_LastRenderedCellCount; }
     Uint32 GetLastForwardDrawCallCount() const { return m_LastForwardDrawCallCount; }
     Uint32 GetLastShadowDrawCallCount() const { return m_LastShadowDrawCallCount; }
+    Uint32 GetTileMeshCount() const { return static_cast<Uint32>(m_TileMeshRanges.size()); }
+    Uint32 GetPackedTileVertexCount() const { return m_PackedTileVertexCount; }
+    Uint32 GetPackedTileIndexCount() const { return m_PackedTileIndexCount; }
     Uint32 GetCellCount() const { return m_HeightField.GetCellCount(); }
     Uint32 GetSampleCountPerAxis() const { return m_HeightField.GetSampleCountPerAxis(); }
     float  GetMinHeight() const { return m_HeightField.GetStats().MinHeight; }
@@ -40,10 +51,12 @@ public:
     float  GetAverageHeight() const { return m_HeightField.GetStats().AverageHeight; }
 
 private:
-    Uint32 DrawRegionIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const;
+    void BuildPackedTileMeshCache(IRenderDevice* pDevice, const std::vector<TerrainQuadtreeNode>& QuadtreeNodes);
+    void DrawTileMeshIndexed(IDeviceContext* pContext, const TerrainDrawRegion& Region) const;
 
 private:
     TerrainHeightField                    m_HeightField;
+    std::vector<TerrainTileMeshRange>      m_TileMeshRanges;
     RefCntAutoPtr<IBuffer>                m_pVertexBuffer;
     RefCntAutoPtr<IBuffer>                m_pIndexBuffer;
     RefCntAutoPtr<IPipelineState>         m_pTerrainPSO;
@@ -54,6 +67,8 @@ private:
     Uint32                                m_LastRenderedCellCount = 0;
     Uint32                                m_LastForwardDrawCallCount = 0;
     Uint32                                m_LastShadowDrawCallCount = 0;
+    Uint32                                m_PackedTileVertexCount = 0;
+    Uint32                                m_PackedTileIndexCount = 0;
     float                                 m_TerrainExtent = 20.0f;
 };
 

@@ -14,9 +14,9 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_ShadowRenderer.Initialize(pDevice, pDevice->GetDeviceInfo().NDC.MinZ == -1);
     m_PostProcessRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_SkyRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
-    m_TerrainPatchRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     TerrainQuadtreeDesc QuadtreeDesc;
     m_TerrainQuadtree.Build(QuadtreeDesc);
+    m_TerrainPatchRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetNodes());
     m_TerrainQuadtreeDebugRenderer.Initialize(pDevice, pSwapChain, m_PSOCache, m_TerrainQuadtree.GetSelectedLeafCapacity() * 8u);
     m_TransparentRenderer.Initialize(pDevice, pSwapChain, m_PSOCache);
     m_ForwardDebugPipeline.Initialize(pDevice, pSwapChain, m_PSOCache);
@@ -27,6 +27,9 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainRenderedCellCount = 0;
     m_Stats.TerrainForwardDrawCallCount = 0;
     m_Stats.TerrainShadowDrawCallCount = 0;
+    m_Stats.TerrainTileMeshCount = m_TerrainPatchRenderer.GetTileMeshCount();
+    m_Stats.TerrainPackedVertexCount = m_TerrainPatchRenderer.GetPackedTileVertexCount();
+    m_Stats.TerrainPackedIndexCount = m_TerrainPatchRenderer.GetPackedTileIndexCount();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
@@ -108,6 +111,9 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainRenderedCellCount = m_TerrainPatchRenderer.GetLastRenderedCellCount();
     m_Stats.TerrainForwardDrawCallCount = m_TerrainPatchRenderer.GetLastForwardDrawCallCount();
     m_Stats.TerrainShadowDrawCallCount = m_TerrainPatchRenderer.GetLastShadowDrawCallCount();
+    m_Stats.TerrainTileMeshCount = m_TerrainPatchRenderer.GetTileMeshCount();
+    m_Stats.TerrainPackedVertexCount = m_TerrainPatchRenderer.GetPackedTileVertexCount();
+    m_Stats.TerrainPackedIndexCount = m_TerrainPatchRenderer.GetPackedTileIndexCount();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
