@@ -193,7 +193,11 @@ void ForwardRenderer::Initialize(IRenderDevice* pDevice, ISwapChain* pSwapChain)
     m_Stats.TerrainMinLODSampleStep = m_TerrainPatchRenderer.GetMinLODSampleStep();
     m_Stats.TerrainMaxLODSampleStep = m_TerrainPatchRenderer.GetMaxLODSampleStep();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
+    m_Stats.TerrainCellCountX = m_TerrainPatchRenderer.GetCellCountX();
+    m_Stats.TerrainCellCountZ = m_TerrainPatchRenderer.GetCellCountZ();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
+    m_Stats.TerrainSampleCountX = m_TerrainPatchRenderer.GetSampleCountX();
+    m_Stats.TerrainSampleCountZ = m_TerrainPatchRenderer.GetSampleCountZ();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
     m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();
@@ -319,7 +323,11 @@ void ForwardRenderer::Render(IDeviceContext* pContext, const RenderView& View, F
     m_Stats.TerrainMinLODSampleStep = m_TerrainPatchRenderer.GetMinLODSampleStep();
     m_Stats.TerrainMaxLODSampleStep = m_TerrainPatchRenderer.GetMaxLODSampleStep();
     m_Stats.TerrainCellCount = m_TerrainPatchRenderer.GetCellCount();
+    m_Stats.TerrainCellCountX = m_TerrainPatchRenderer.GetCellCountX();
+    m_Stats.TerrainCellCountZ = m_TerrainPatchRenderer.GetCellCountZ();
     m_Stats.TerrainSampleCountPerAxis = m_TerrainPatchRenderer.GetSampleCountPerAxis();
+    m_Stats.TerrainSampleCountX = m_TerrainPatchRenderer.GetSampleCountX();
+    m_Stats.TerrainSampleCountZ = m_TerrainPatchRenderer.GetSampleCountZ();
     m_Stats.TerrainMinHeight = m_TerrainPatchRenderer.GetMinHeight();
     m_Stats.TerrainMaxHeight = m_TerrainPatchRenderer.GetMaxHeight();
     m_Stats.TerrainAverageHeight = m_TerrainPatchRenderer.GetAverageHeight();

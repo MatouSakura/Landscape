@@ -67,7 +67,11 @@ public:
     Uint32 GetMinLODSampleStep() const { return m_MinLODSampleStep; }
     Uint32 GetMaxLODSampleStep() const { return m_MaxLODSampleStep; }
     Uint32 GetCellCount() const { return m_HeightField.GetCellCount(); }
+    Uint32 GetCellCountX() const { return m_HeightField.GetCellCountX(); }
+    Uint32 GetCellCountZ() const { return m_HeightField.GetCellCountZ(); }
     Uint32 GetSampleCountPerAxis() const { return m_HeightField.GetSampleCountPerAxis(); }
+    Uint32 GetSampleCountX() const { return m_HeightField.GetSampleCountX(); }
+    Uint32 GetSampleCountZ() const { return m_HeightField.GetSampleCountZ(); }
     float  GetMinHeight() const { return m_HeightField.GetStats().MinHeight; }
     float  GetMaxHeight() const { return m_HeightField.GetStats().MaxHeight; }
     float  GetAverageHeight() const { return m_HeightField.GetStats().AverageHeight; }

@@ -43,7 +43,11 @@ struct ForwardRendererStats final
     Uint32 TerrainMinLODSampleStep = 1;
     Uint32 TerrainMaxLODSampleStep = 1;
     Uint32 TerrainCellCount   = 0;
+    Uint32 TerrainCellCountX  = 0;
+    Uint32 TerrainCellCountZ  = 0;
     Uint32 TerrainSampleCountPerAxis = 0;
+    Uint32 TerrainSampleCountX = 0;
+    Uint32 TerrainSampleCountZ = 0;
     float  TerrainMinHeight   = 0.0f;
     float  TerrainMaxHeight   = 0.0f;
     float  TerrainAverageHeight = 0.0f;

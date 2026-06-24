@@ -34,30 +34,32 @@ static constexpr float SkirtDepth = 1.25f;
 
 TerrainDrawRegion BuildTerrainDrawRegion(const TerrainHeightField& HeightField, float TerrainExtent, const TerrainQuadtreeNode& Node)
 {
-    const Uint32 CellCount = HeightField.GetCellCount();
-    const float  InvSize   = CellCount > 0 ? static_cast<float>(CellCount) / (2.0f * TerrainExtent) : 0.0f;
+    const Uint32 CellCountX = HeightField.GetCellCountX();
+    const Uint32 CellCountZ = HeightField.GetCellCountZ();
+    const float  InvSizeX   = CellCountX > 0 ? static_cast<float>(CellCountX) / (2.0f * TerrainExtent) : 0.0f;
+    const float  InvSizeZ   = CellCountZ > 0 ? static_cast<float>(CellCountZ) / (2.0f * TerrainExtent) : 0.0f;
 
-    auto ToCellBoundary = [&](float WorldCoord) {
+    auto ToCellBoundary = [&](float WorldCoord, Uint32 CellCount, float InvSize) {
         const float CellCoord = (WorldCoord + TerrainExtent) * InvSize;
         const Int32 Rounded = static_cast<Int32>(std::lround(CellCoord));
         return static_cast<Uint32>(std::clamp<Int32>(Rounded, 0, static_cast<Int32>(CellCount)));
     };
 
-    const Uint32 MinCellX = ToCellBoundary(Node.MinXZ.x);
-    const Uint32 MaxCellX = ToCellBoundary(Node.MaxXZ.x);
-    const Uint32 MinCellZ = ToCellBoundary(Node.MinXZ.y);
-    const Uint32 MaxCellZ = ToCellBoundary(Node.MaxXZ.y);
+    const Uint32 MinCellX = ToCellBoundary(Node.MinXZ.x, CellCountX, InvSizeX);
+    const Uint32 MaxCellX = ToCellBoundary(Node.MaxXZ.x, CellCountX, InvSizeX);
+    const Uint32 MinCellZ = ToCellBoundary(Node.MinXZ.y, CellCountZ, InvSizeZ);
+    const Uint32 MaxCellZ = ToCellBoundary(Node.MaxXZ.y, CellCountZ, InvSizeZ);
 
     TerrainDrawRegion Region;
     Region.NodeIndex  = Node.NodeIndex;
     Region.Level      = Node.Level;
     Region.MinXZ      = Node.MinXZ;
     Region.MaxXZ      = Node.MaxXZ;
-    Region.FirstCellX = std::min(MinCellX, CellCount > 0 ? CellCount - 1u : 0u);
-    Region.FirstCellZ = std::min(MinCellZ, CellCount > 0 ? CellCount - 1u : 0u);
+    Region.FirstCellX = std::min(MinCellX, CellCountX > 0 ? CellCountX - 1u : 0u);
+    Region.FirstCellZ = std::min(MinCellZ, CellCountZ > 0 ? CellCountZ - 1u : 0u);
 
-    const Uint32 EndCellX = std::clamp(MaxCellX, Region.FirstCellX + 1u, CellCount);
-    const Uint32 EndCellZ = std::clamp(MaxCellZ, Region.FirstCellZ + 1u, CellCount);
+    const Uint32 EndCellX = std::clamp(MaxCellX, Region.FirstCellX + 1u, CellCountX);
+    const Uint32 EndCellZ = std::clamp(MaxCellZ, Region.FirstCellZ + 1u, CellCountZ);
     Region.CellCountX = EndCellX - Region.FirstCellX;
     Region.CellCountZ = EndCellZ - Region.FirstCellZ;
     Region.LODSampleStep   = 1;
@@ -784,8 +786,8 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
     m_MinLODSampleStep = QuadtreeNodes.empty() ? 1u : std::numeric_limits<Uint32>::max();
     m_MaxLODSampleStep = 1;
 
-    const Uint32 TerrainCellCount = m_HeightField.GetCellCount();
-    const float  CellSize = TerrainCellCount > 0 ? (2.0f * m_TerrainExtent) / static_cast<float>(TerrainCellCount) : 0.0f;
+    const float  CellSizeX = m_HeightField.GetCellSizeX();
+    const float  CellSizeZ = m_HeightField.GetCellSizeZ();
     const Uint32 MaxQuadtreeLevel = GetMaxQuadtreeLevel(QuadtreeNodes);
 
     for (const TerrainQuadtreeNode& Node : QuadtreeNodes)
@@ -811,10 +813,10 @@ void TerrainPatchRenderer::BuildPackedTileMeshCache(IRenderDevice* pDevice, cons
 
         for (Uint32 SampleZ : SampleCellZs)
         {
-            const float WorldZ = -m_TerrainExtent + CellSize * static_cast<float>(SampleZ);
+            const float WorldZ = -m_TerrainExtent + CellSizeZ * static_cast<float>(SampleZ);
             for (Uint32 SampleX : SampleCellXs)
             {
-                const float WorldX = -m_TerrainExtent + CellSize * static_cast<float>(SampleX);
+                const float WorldX = -m_TerrainExtent + CellSizeX * static_cast<float>(SampleX);
                 Vertices.push_back(TerrainVertex{
                     float3{WorldX, m_HeightField.GetHeight(SampleX, SampleZ), WorldZ},
                     m_HeightField.GetNormal(SampleX, SampleZ),

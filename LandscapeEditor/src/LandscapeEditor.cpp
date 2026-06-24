@@ -62,12 +62,6 @@ LandscapeEditor::CommandLineStatus LandscapeEditor::ProcessCommandLine(int argc,
         LOG_ERROR_MESSAGE("Invalid landscape heightmap tile grid. Expected both landscape_heightmap_tiles_x and landscape_heightmap_tiles_z to be at least 1.");
         return CommandLineStatus::Error;
     }
-    if (!m_TerrainHeightmapRawR16TilesPattern.empty() && m_TerrainHeightmapTileCountX != m_TerrainHeightmapTileCountZ)
-    {
-        LOG_ERROR_MESSAGE("Invalid non-square tiled RAW R16 heightmap package. landscape_heightmap_raw_r16_tiles v1 requires landscape_heightmap_tiles_x and landscape_heightmap_tiles_z to match.");
-        return CommandLineStatus::Error;
-    }
-
     return CommandLineStatus::OK;
 }
 
@@ -122,7 +116,7 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         const auto& Stats = m_ForwardRenderer.GetStats();
         ImGui::Text("Opaque items: %u", Stats.OpaqueItemCount);
         ImGui::Text("Terrain tris: %u", Stats.TerrainTriangleCount);
-        ImGui::Text("Terrain cells: %u", Stats.TerrainCellCount);
+        ImGui::Text("Terrain cells: %u x %u", Stats.TerrainCellCountX, Stats.TerrainCellCountZ);
         ImGui::Text("Terrain render items: %u", Stats.TerrainRenderItemCount);
         ImGui::Text("Terrain rendered cells: %u", Stats.TerrainRenderedCellCount);
         ImGui::Text("Terrain rendered mesh cells: %u", Stats.TerrainRenderedMeshCellCount);
@@ -136,6 +130,7 @@ void LandscapeEditor::Update(double CurrTime, double ElapsedTime, bool DoUpdateU
         ImGui::Text("Skirt depth: %.2f", Stats.TerrainSkirtDepth);
         ImGui::Text("Skirt vertices: %u", Stats.TerrainSkirtVertexCount);
         ImGui::Text("Skirt indices: %u", Stats.TerrainSkirtIndexCount);
+        ImGui::Text("Terrain samples: %u x %u", Stats.TerrainSampleCountX, Stats.TerrainSampleCountZ);
         ImGui::Text("Terrain samples/axis: %u", Stats.TerrainSampleCountPerAxis);
         ImGui::Text("Height source: %s", Stats.TerrainHeightSourceName);
         ImGui::Text("Heightmap loaded: %s", Stats.TerrainHeightmapLoaded ? "yes" : "no");

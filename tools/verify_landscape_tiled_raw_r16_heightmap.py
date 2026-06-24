@@ -18,6 +18,11 @@ def require_contains(text: str, pattern: str, description: str) -> None:
         raise AssertionError(f"missing {description}")
 
 
+def require_not_contains(text: str, pattern: str, description: str) -> None:
+    if re.search(pattern, text, re.MULTILINE | re.DOTALL):
+        raise AssertionError(f"unexpected {description}")
+
+
 def iter_render_function_bodies(text: str):
     pattern = re.compile(r"\bvoid\s+([A-Za-z0-9_]+::Render(?:Shadow)?)\s*\([^)]*\)\s*\{", re.MULTILINE)
     for match in pattern.finditer(text):
@@ -81,7 +86,7 @@ def main() -> int:
         ("renderer_setter", lambda: require_contains(renderer_text, r"SetTerrainHeightmapRawR16Tiles", "ForwardRenderer tiled RAW R16 setter")),
         ("editor_member", lambda: require_contains(f("editor_hpp"), r"m_TerrainHeightmapRawR16TilesPattern", "LandscapeEditor tiled RAW R16 CLI member")),
         ("editor_cli", lambda: require_contains(editor_text, r"landscape_heightmap_raw_r16_tiles.*m_TerrainHeightmapRawR16TilesPattern", "LandscapeEditor parses tiled RAW R16 CLI")),
-        ("editor_square_validation", lambda: require_contains(editor_text, r"m_TerrainHeightmapRawR16TilesPattern.*TileCountX.*TileCountZ.*non-square|non-square.*m_TerrainHeightmapRawR16TilesPattern", "LandscapeEditor rejects non-square tiled RAW R16 v1 grids")),
+        ("editor_allows_non_square_tiles", lambda: require_not_contains(editor_text, r"non-square tiled RAW R16 heightmap package|TileCountX\s*!=\s*m_TerrainHeightmapTileCountZ", "LandscapeEditor non-square tiled RAW R16 rejection")),
         ("editor_forwards_pattern", lambda: require_contains(editor_text, r"SetTerrainHeightmapRawR16Tiles\s*\([^;]*m_TerrainHeightmapRawR16TilesPattern", "LandscapeEditor forwards tiled RAW R16 config")),
         ("status_record", lambda: require_contains(f("status"), r"tiled RAW R16 heightmap|RAW R16 tile", "status record for tiled RAW R16 heightmap package")),
         ("plan_validation_record", lambda: require_contains(f("plan"), r"Validation Record.*Build:.*Static validation:.*Smoke:", "tiled RAW R16 validation record")),

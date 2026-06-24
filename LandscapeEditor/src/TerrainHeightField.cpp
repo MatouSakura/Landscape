@@ -83,12 +83,12 @@ void TerrainHeightField::GenerateProcedural(const TerrainHeightFieldDesc& Desc)
 {
     InitializeGrid(Desc);
 
-    for (Uint32 Z = 0; Z < m_SampleCountPerAxis; ++Z)
+    for (Uint32 Z = 0; Z < m_SampleCountZ; ++Z)
     {
-        const float WorldZ = -m_Desc.Extent + m_CellSize * static_cast<float>(Z);
-        for (Uint32 X = 0; X < m_SampleCountPerAxis; ++X)
+        const float WorldZ = -m_Desc.Extent + m_CellSizeZ * static_cast<float>(Z);
+        for (Uint32 X = 0; X < m_SampleCountX; ++X)
         {
-            const float WorldX = -m_Desc.Extent + m_CellSize * static_cast<float>(X);
+            const float WorldX = -m_Desc.Extent + m_CellSizeX * static_cast<float>(X);
             const float Height = EvaluateProceduralHeight(WorldX, WorldZ, m_Desc.HeightScale);
 
             m_Heights[GetIndex(X, Z)] = Height;
@@ -117,15 +117,17 @@ bool TerrainHeightField::LoadRawR16(const TerrainHeightFieldDesc& Desc,
 
     TerrainHeightFieldDesc RawDesc = Desc;
     RawDesc.CellCount = SampleCountPerAxis - 1u;
+    RawDesc.CellCountX = RawDesc.CellCount;
+    RawDesc.CellCountZ = RawDesc.CellCount;
 
     std::vector<Uint16> RawSamples;
     if (!ReadRawR16Samples(Path, SampleCountPerAxis, RawSamples, ErrorMessage))
         return false;
 
     InitializeGrid(RawDesc);
-    for (Uint32 Z = 0; Z < m_SampleCountPerAxis; ++Z)
+    for (Uint32 Z = 0; Z < m_SampleCountZ; ++Z)
     {
-        for (Uint32 X = 0; X < m_SampleCountPerAxis; ++X)
+        for (Uint32 X = 0; X < m_SampleCountX; ++X)
         {
             const Uint16 Sample = RawSamples[GetIndex(X, Z)];
             const float NormalizedHeight = static_cast<float>(Sample) / 65535.0f;
@@ -161,12 +163,6 @@ bool TerrainHeightField::LoadRawR16Tiles(const TerrainHeightFieldDesc& Desc,
             *ErrorMessage = "RAW R16 tile counts must be at least 1";
         return false;
     }
-    if (TileCountX != TileCountZ)
-    {
-        if (ErrorMessage != nullptr)
-            *ErrorMessage = "RAW R16 tiled heightmap v1 requires a square tile grid";
-        return false;
-    }
     if (TileSampleCountPerAxis < 2u)
     {
         if (ErrorMessage != nullptr)
@@ -182,11 +178,15 @@ bool TerrainHeightField::LoadRawR16Tiles(const TerrainHeightFieldDesc& Desc,
     }
 
     const Uint32 TileCellCount = TileSampleCountPerAxis - 1u;
-    const Uint32 CombinedCellCount = TileCellCount * TileCountX;
-    const Uint32 CombinedSampleCountPerAxis = CombinedCellCount + 1u;
+    const Uint32 CombinedCellCountX = TileCellCount * TileCountX;
+    const Uint32 CombinedCellCountZ = TileCellCount * TileCountZ;
+    const Uint32 CombinedSampleCountX = CombinedCellCountX + 1u;
+    const Uint32 CombinedSampleCountZ = CombinedCellCountZ + 1u;
 
     TerrainHeightFieldDesc RawDesc = Desc;
-    RawDesc.CellCount = CombinedCellCount;
+    RawDesc.CellCount = std::max(CombinedCellCountX, CombinedCellCountZ);
+    RawDesc.CellCountX = CombinedCellCountX;
+    RawDesc.CellCountZ = CombinedCellCountZ;
     InitializeGrid(RawDesc);
 
     std::vector<Uint16> RawSamples;
@@ -216,7 +216,7 @@ bool TerrainHeightField::LoadRawR16Tiles(const TerrainHeightFieldDesc& Desc,
                 {
                     const Uint32 DestinationX = FirstSampleX + LocalX;
                     const Uint32 DestinationZ = FirstSampleZ + LocalZ;
-                    if (DestinationX >= CombinedSampleCountPerAxis || DestinationZ >= CombinedSampleCountPerAxis)
+                    if (DestinationX >= CombinedSampleCountX || DestinationZ >= CombinedSampleCountZ)
                         continue;
 
                     const Uint16 Sample = RawSamples[LocalZ * TileSampleCountPerAxis + LocalX];
@@ -252,12 +252,19 @@ void TerrainHeightField::InitializeGrid(const TerrainHeightFieldDesc& Desc)
 {
     m_Desc             = Desc;
     m_Desc.CellCount  = std::max<Uint32>(m_Desc.CellCount, 1u);
+    m_Desc.CellCountX = m_Desc.CellCountX > 0u ? m_Desc.CellCountX : m_Desc.CellCount;
+    m_Desc.CellCountZ = m_Desc.CellCountZ > 0u ? m_Desc.CellCountZ : m_Desc.CellCount;
+    m_Desc.CellCountX = std::max<Uint32>(m_Desc.CellCountX, 1u);
+    m_Desc.CellCountZ = std::max<Uint32>(m_Desc.CellCountZ, 1u);
+    m_Desc.CellCount  = std::max(m_Desc.CellCount, std::max(m_Desc.CellCountX, m_Desc.CellCountZ));
     m_Desc.Extent     = std::max(m_Desc.Extent, 1.0f);
     m_Desc.HeightScale = std::max(m_Desc.HeightScale, 0.001f);
-    m_SampleCountPerAxis = m_Desc.CellCount + 1u;
-    m_CellSize           = (2.0f * m_Desc.Extent) / static_cast<float>(m_Desc.CellCount);
+    m_SampleCountX = m_Desc.CellCountX + 1u;
+    m_SampleCountZ = m_Desc.CellCountZ + 1u;
+    m_CellSizeX    = (2.0f * m_Desc.Extent) / static_cast<float>(m_Desc.CellCountX);
+    m_CellSizeZ    = (2.0f * m_Desc.Extent) / static_cast<float>(m_Desc.CellCountZ);
 
-    const Uint32 SampleCount = m_SampleCountPerAxis * m_SampleCountPerAxis;
+    const Uint32 SampleCount = m_SampleCountX * m_SampleCountZ;
     m_Heights.assign(SampleCount, 0.0f);
     m_Normals.assign(SampleCount, float3{0.0f, 1.0f, 0.0f});
 }
@@ -287,31 +294,36 @@ void TerrainHeightField::UpdateStats()
 
 void TerrainHeightField::RebuildNormals()
 {
-    for (Uint32 Z = 0; Z < m_SampleCountPerAxis; ++Z)
+    for (Uint32 Z = 0; Z < m_SampleCountZ; ++Z)
     {
-        for (Uint32 X = 0; X < m_SampleCountPerAxis; ++X)
+        for (Uint32 X = 0; X < m_SampleCountX; ++X)
         {
             const float HeightL = GetClampedHeight(static_cast<Int32>(X) - 1, static_cast<Int32>(Z));
             const float HeightR = GetClampedHeight(static_cast<Int32>(X) + 1, static_cast<Int32>(Z));
             const float HeightD = GetClampedHeight(static_cast<Int32>(X), static_cast<Int32>(Z) - 1);
             const float HeightU = GetClampedHeight(static_cast<Int32>(X), static_cast<Int32>(Z) + 1);
 
-            m_Normals[GetIndex(X, Z)] = normalize(float3{HeightL - HeightR, 2.0f * m_CellSize, HeightD - HeightU});
+            m_Normals[GetIndex(X, Z)] = normalize(float3{
+                (HeightL - HeightR) * m_CellSizeZ,
+                2.0f * m_CellSizeX * m_CellSizeZ,
+                (HeightD - HeightU) * m_CellSizeX});
         }
     }
 }
 
 float2 TerrainHeightField::GetUV(Uint32 X, Uint32 Z) const
 {
-    const float InvMaxCoord = m_SampleCountPerAxis > 1 ? 1.0f / static_cast<float>(m_SampleCountPerAxis - 1u) : 0.0f;
-    return float2{static_cast<float>(X) * InvMaxCoord, static_cast<float>(Z) * InvMaxCoord};
+    const float InvMaxCoordX = m_SampleCountX > 1 ? 1.0f / static_cast<float>(m_SampleCountX - 1u) : 0.0f;
+    const float InvMaxCoordZ = m_SampleCountZ > 1 ? 1.0f / static_cast<float>(m_SampleCountZ - 1u) : 0.0f;
+    return float2{static_cast<float>(X) * InvMaxCoordX, static_cast<float>(Z) * InvMaxCoordZ};
 }
 
 float TerrainHeightField::GetClampedHeight(Int32 X, Int32 Z) const
 {
-    const Int32 MaxCoord = static_cast<Int32>(m_SampleCountPerAxis) - 1;
-    const Uint32 ClampedX = static_cast<Uint32>(std::clamp(X, 0, MaxCoord));
-    const Uint32 ClampedZ = static_cast<Uint32>(std::clamp(Z, 0, MaxCoord));
+    const Int32 MaxCoordX = static_cast<Int32>(m_SampleCountX) - 1;
+    const Int32 MaxCoordZ = static_cast<Int32>(m_SampleCountZ) - 1;
+    const Uint32 ClampedX = static_cast<Uint32>(std::clamp(X, 0, MaxCoordX));
+    const Uint32 ClampedZ = static_cast<Uint32>(std::clamp(Z, 0, MaxCoordZ));
     return m_Heights[GetIndex(ClampedX, ClampedZ)];
 }
 

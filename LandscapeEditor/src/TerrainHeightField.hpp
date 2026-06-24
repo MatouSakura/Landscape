@@ -3,6 +3,7 @@
 #include "BasicMath.hpp"
 #include "BasicTypes.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,8 @@ namespace Diligent
 struct TerrainHeightFieldDesc final
 {
     Uint32 CellCount   = 64;
+    Uint32 CellCountX  = 0;
+    Uint32 CellCountZ  = 0;
     float  Extent      = 20.0f;
     float  HeightScale = 2.5f;
 };
@@ -45,8 +48,14 @@ public:
                          Uint32 TileSampleCountPerAxis,
                          std::string* ErrorMessage = nullptr);
 
-    Uint32 GetCellCount() const { return m_Desc.CellCount; }
-    Uint32 GetSampleCountPerAxis() const { return m_SampleCountPerAxis; }
+    Uint32 GetCellCount() const { return std::max(m_Desc.CellCountX, m_Desc.CellCountZ); }
+    Uint32 GetCellCountX() const { return m_Desc.CellCountX; }
+    Uint32 GetCellCountZ() const { return m_Desc.CellCountZ; }
+    Uint32 GetSampleCountPerAxis() const { return std::max(m_SampleCountX, m_SampleCountZ); }
+    Uint32 GetSampleCountX() const { return m_SampleCountX; }
+    Uint32 GetSampleCountZ() const { return m_SampleCountZ; }
+    float  GetCellSizeX() const { return m_CellSizeX; }
+    float  GetCellSizeZ() const { return m_CellSizeZ; }
     float  GetExtent() const { return m_Desc.Extent; }
     float  GetHeightScale() const { return m_Desc.HeightScale; }
     float  GetHeight(Uint32 X, Uint32 Z) const { return m_Heights[GetIndex(X, Z)]; }
@@ -62,7 +71,7 @@ private:
     void   InitializeGrid(const TerrainHeightFieldDesc& Desc);
     void   UpdateStats();
     void   RebuildNormals();
-    Uint32 GetIndex(Uint32 X, Uint32 Z) const { return Z * m_SampleCountPerAxis + X; }
+    Uint32 GetIndex(Uint32 X, Uint32 Z) const { return Z * m_SampleCountX + X; }
     float  GetClampedHeight(Int32 X, Int32 Z) const;
 
 private:
@@ -70,8 +79,10 @@ private:
     TerrainHeightSampleStats      m_Stats;
     std::vector<float>            m_Heights;
     std::vector<float3>           m_Normals;
-    Uint32                        m_SampleCountPerAxis = 0;
-    float                         m_CellSize           = 0.0f;
+    Uint32                        m_SampleCountX = 0;
+    Uint32                        m_SampleCountZ = 0;
+    float                         m_CellSizeX    = 0.0f;
+    float                         m_CellSizeZ    = 0.0f;
     TerrainHeightFieldSource      m_Source             = TerrainHeightFieldSource::Procedural;
 };
 
